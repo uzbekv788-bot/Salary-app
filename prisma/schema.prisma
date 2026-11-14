@@ -1,0 +1,169 @@
+// Схема БД Salary. Деньги — BigInt в минорных единицах (копейки/центы), см. SPEC.md §3.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../lib/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum TxType {
+  INCOME
+  EXPENSE
+}
+
+enum WalletType {
+  CARD
+  CASH
+  SAVINGS
+  OTHER
+}
+
+// ─────────────── Аутентификация (таблицы Better Auth) ───────────────
+
+model User {
+  id            String   @id
+  name          String
+  email         String   @unique
+  emailVerified Boolean  @default(false)
+  image         String?
+  // Поля приложения (user.additionalFields в lib/auth.ts)
+  currency      String   @default("RUB")
+  timezone      String   @default("Europe/Moscow")
+  onboarded     Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  sessions     Session[]
+  accounts     Account[]
+  wallets      Wallet[]
+  categories   Category[]
+  transactions Transaction[]
+  budgets      Budget[]
+
+  @@map("user")
+}
+
+model Session {
+  id        String   @id
+  expiresAt DateTime
+  token     String   @unique
+  ipAddress String?
+  userAgent String?
+  userId    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("session")
+}
+
+model Account {
+  id                    String    @id
+  accountId             String
+  providerId            String
+  userId                String
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("account")
+}
+
+model Verification {
+  id         String   @id
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([identifier])
+  @@map("verification")
+}
+
+// ─────────────── Домен ───────────────
+
+/// «Счёт» в интерфейсе: карта, наличные, сбережения.
+model Wallet {
+  id             String     @id @default(cuid())
+  userId         String
+  name           String
+  type           WalletType @default(CARD)
+  initialBalance BigInt     @default(0)
+  archived       Boolean    @default(false)
+  createdAt      DateTime   @default(now())
+  user           User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions   Transaction[]
+
+  @@index([userId])
+  @@map("wallet")
+}
+
+model Category {
+  id           String        @id @default(cuid())
+  userId       String
+  name         String
+  type         TxType
+  icon         String
+  color        String
+  archived     Boolean       @default(false)
+  sortOrder    Int           @default(0)
+  createdAt    DateTime      @default(now())
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions Transaction[]
+  budgets      Budget[]
+
+  @@unique([userId, type, name])
+  @@index([userId, type])
+  @@map("category")
+}
+
+model Transaction {
+  id         String    @id @default(cuid())
+  userId     String
+  type       TxType
+  /// Всегда > 0, в минорных единицах
+  amount     BigInt
+  /// Дата без времени, в часовом поясе пользователя
+  date       DateTime  @db.Date
+  note       String?   @db.VarChar(200)
+  categoryId String
+  walletId   String
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  /// Мягкое удаление для кнопки «Отменить»
+  deletedAt  DateTime?
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category   Category  @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  wallet     Wallet    @relation(fields: [walletId], references: [id], onDelete: Restrict)
+
+  @@index([userId, date])
+  @@index([userId, categoryId, date])
+  @@map("transaction")
+}
+
+model Budget {
+  id         String   @id @default(cuid())
+  userId     String
+  categoryId String
+  /// Первое число месяца
+  month      DateTime @db.Date
+  limit      BigInt
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, categoryId, month])
+  @@map("budget")
+}
