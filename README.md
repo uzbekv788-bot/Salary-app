@@ -8,35 +8,61 @@ Next.js 16 · React 19 · Tailwind CSS 4 · Radix UI · Recharts · Prisma 7 · 
 
 ## Быстрый старт (локально)
 
-Нужны Node.js ≥ 20.9, pnpm 10 и Docker (или своя PostgreSQL 16).
+Нужны **Node.js ≥ 20.9**, **pnpm 10** (`npm install -g pnpm`) и **Docker Desktop** — он поднимет PostgreSQL 16.
+Без Docker подойдёт своя PostgreSQL 16: укажите её адрес в `DATABASE_URL`.
 
-```bash
-pnpm install
-```
+1. Распакуйте архив (или склонируйте репозиторий) и откройте терминал в папке `salary`.
+2. Создайте файл настроек из шаблона:
 
 ```bash
 cp .env.example .env
 ```
 
-Впишите в `.env` секрет `BETTER_AUTH_SECRET` (сгенерировать: `openssl rand -base64 32`).
+В Windows (PowerShell): `Copy-Item .env.example .env`.
+
+3. Сгенерируйте секрет и вставьте его в `.env` в строку `BETTER_AUTH_SECRET="..."`:
+
+```bash
+openssl rand -base64 32
+```
+
+Если `openssl` нет — подойдёт любая случайная строка длиной от 32 символов.
+
+4. Установите зависимости:
+
+```bash
+pnpm install
+```
+
+5. Запустите базу данных:
 
 ```bash
 docker compose up -d
 ```
 
+6. Создайте таблицы:
+
 ```bash
 pnpm exec prisma migrate deploy
 ```
+
+7. (Необязательно) Загрузите демо-данные:
 
 ```bash
 pnpm db:seed
 ```
 
+8. Запустите приложение:
+
 ```bash
 pnpm dev
 ```
 
-Откройте http://localhost:3000 и войдите как **demo@salary.app / demo12345** — у демо-пользователя операции за 12 месяцев и бюджеты.
+Откройте http://localhost:3000. Если загружали демо-данные — войдите как **demo@salary.app / demo12345**
+(операции за 12 месяцев и бюджеты). Или зарегистрируйтесь сами.
+
+В архиве есть папка `.git` с историей коммитов: чтобы загрузить проект в свой GitHub, создайте пустой
+репозиторий и выполните `git remote add origin <ссылка>` и `git push -u origin main`.
 
 ## Команды
 

@@ -1,5 +1,5 @@
 import "dotenv/config";
-import { defineConfig, env } from "prisma/config";
+import { defineConfig } from "prisma/config";
 
 export default defineConfig({
   schema: "prisma/schema.prisma",
@@ -8,6 +8,8 @@ export default defineConfig({
     seed: "tsx prisma/seed.ts",
   },
   datasource: {
-    url: env("DATABASE_URL"),
+    // Адрес базы — из .env. Для `prisma generate` (запускается при pnpm install) он не нужен,
+    // поэтому установка зависимостей не падает, если .env ещё не создан.
+    url: process.env.DATABASE_URL ?? "",
   },
 });
