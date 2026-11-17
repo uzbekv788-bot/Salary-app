@@ -15,8 +15,9 @@ describe("resolvePeriod", () => {
       label: "Ноябрь 2026",
       isCurrent: true,
     });
-    expect(p.prevFrom).toBe("2026-10-02");
-    expect(p.prevTo).toBe("2026-10-31");
+    // Текущий месяц сравнивается с тем же числом дней прошлого: 1–14 октября
+    expect(p.prevFrom).toBe("2026-10-01");
+    expect(p.prevTo).toBe("2026-10-14");
     expect(p.prevParams).toEqual({ period: "month", date: "2026-10-01" });
     expect(p.nextParams).toBeNull();
   });
@@ -31,6 +32,14 @@ describe("resolvePeriod", () => {
       isCurrent: false,
     });
     expect(p.nextParams).toEqual({ period: "month", date: "2026-03-01" });
+    // Завершённый месяц — с полным предыдущим календарным месяцем
+    expect(p.prevFrom).toBe("2026-01-01");
+    expect(p.prevTo).toBe("2026-01-31");
+  });
+
+  it("квартал сравнивается с предыдущим календарным кварталом", () => {
+    const p = resolvePeriod({ period: "quarter", date: "2026-05-05" }, TODAY);
+    expect(p).toMatchObject({ prevFrom: "2026-01-01", prevTo: "2026-03-31" });
   });
 
   it("неделя начинается в понедельник", () => {

@@ -5,6 +5,8 @@ import { db } from "@/lib/db";
 import { requireUser } from "@/lib/session";
 import { type ActionResult, fail, fromDateStr, fromZod, ok } from "@/lib/actions/utils";
 import {
+  budgetSchema,
+  type BudgetInput,
   categorySchema,
   transactionSchema,
   walletSchema,
@@ -12,6 +14,7 @@ import {
   type TransactionInput,
   type WalletInput,
 } from "@/lib/validators/finance";
+import { getBudgetsProgress, type BudgetProgress } from "@/lib/queries/analytics";
 
 const refresh = () => revalidatePath("/", "layout");
 
@@ -30,10 +33,24 @@ async function checkRefs(userId: string, categoryId: string, walletId: string, t
   return null;
 }
 
+type SavedTx = {
+  id: string;
+  budget: Pick<BudgetProgress, "name" | "pct" | "status" | "limit" | "spent"> | null;
+};
+
+/** Бюджет категории за месяц операции — чтобы предупредить после расхода (tasks.md 11.3). */
+async function budgetAfter(userId: string, type: string, categoryId: string, date: string) {
+  if (type !== "EXPENSE") return null;
+  const [b] = await getBudgetsProgress(userId, `${date.slice(0, 7)}-01`, categoryId);
+  return b && b.status !== "ok"
+    ? { name: b.name, pct: b.pct, status: b.status, limit: b.limit, spent: b.spent }
+    : null;
+}
+
 export async function saveTransaction(
   input: TransactionInput,
   id?: string,
-): Promise<ActionResult<{ id: string }>> {
+): Promise<ActionResult<SavedTx>> {
   const user = await requireUser();
   const parsed = transactionSchema.safeParse(input);
   if (!parsed.success) return fromZod(parsed.error);
@@ -49,14 +66,17 @@ export async function saveTransaction(
     });
     if (!count) return fail("Операция не найдена");
     refresh();
-    return ok({ id });
+    return ok({ id, budget: await budgetAfter(user.id, rest.type, rest.categoryId, date) });
   }
   const created = await db.transaction.create({
     data: { ...data, userId: user.id },
     select: { id: true },
   });
   refresh();
-  return ok(created);
+  return ok({
+    id: created.id,
+    budget: await budgetAfter(user.id, rest.type, rest.categoryId, date),
+  });
 }
 
 /** Мягкое удаление — можно отменить (PRD FR-5). */
@@ -218,4 +238,58 @@ export async function setWalletArchived(
   if (!count) return fail("Счёт не найден");
   refresh();
   return ok(undefined);
+}
+
+/* ───────────── Бюджеты (tasks.md 11.1) ───────────── */
+
+export async function upsertBudget(input: BudgetInput): Promise<ActionResult<undefined>> {
+  const user = await requireUser();
+  const parsed = budgetSchema.safeParse(input);
+  if (!parsed.success) return fromZod(parsed.error);
+  const { categoryId, month, limit } = parsed.data;
+  const category = await db.category.findFirst({
+    where: { id: categoryId, userId: user.id, type: "EXPENSE" },
+  });
+  if (!category)
+    return fail("Бюджет можно задать только для категории расходов", {
+      categoryId: "Выберите категорию",
+    });
+  const monthDate = fromDateStr(month);
+  await db.budget.upsert({
+    where: { userId_categoryId_month: { userId: user.id, categoryId, month: monthDate } },
+    create: { userId: user.id, categoryId, month: monthDate, limit: BigInt(limit) },
+    update: { limit: BigInt(limit) },
+  });
+  refresh();
+  return ok(undefined);
+}
+
+export async function deleteBudget(id: string): Promise<ActionResult<undefined>> {
+  const user = await requireUser();
+  const { count } = await db.budget.deleteMany({ where: { id, userId: user.id } });
+  if (!count) return fail("Бюджет не найден");
+  refresh();
+  return ok(undefined);
+}
+
+/** Скопировать лимиты прошлого месяца в текущий (если их там ещё нет). */
+export async function copyBudgetsFromPrevious(
+  month: string,
+): Promise<ActionResult<{ copied: number }>> {
+  const user = await requireUser();
+  if (!/^\d{4}-\d{2}-01$/.test(month)) return fail("Некорректный месяц");
+  const cur = fromDateStr(month);
+  const prev = new Date(Date.UTC(cur.getUTCFullYear(), cur.getUTCMonth() - 1, 1));
+  const prevBudgets = await db.budget.findMany({ where: { userId: user.id, month: prev } });
+  const { count } = await db.budget.createMany({
+    data: prevBudgets.map((b) => ({
+      userId: user.id,
+      categoryId: b.categoryId,
+      month: cur,
+      limit: b.limit,
+    })),
+    skipDuplicates: true,
+  });
+  refresh();
+  return ok({ copied: count });
 }

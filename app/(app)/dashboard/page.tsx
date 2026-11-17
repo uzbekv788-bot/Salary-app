@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import Link from "next/link";
-import { ArrowRight, Sparkles } from "lucide-react";
+import { ArrowRight, OctagonAlert, Sparkles, TriangleAlert } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { PageSkeleton } from "@/components/layout/page-skeleton";
 import { CategoryDonut } from "@/components/charts/category-donut";
@@ -13,7 +13,8 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { shortDate } from "@/lib/format-date";
 import { formatMoney, percentChange, savingsRate } from "@/lib/money";
 import { getPeriod } from "@/lib/period-server";
-import { getByCategory, getKpis, getTrend } from "@/lib/queries/analytics";
+import { getBudgetsProgress, getByCategory, getKpis, getTrend } from "@/lib/queries/analytics";
+import { Progress } from "@/components/ui/progress";
 import { listTransactions, listWallets } from "@/lib/queries/finance";
 
 export const metadata = { title: "Дашборд" };
@@ -36,13 +37,15 @@ async function Content({
   searchParams: PageProps<"/dashboard">["searchParams"];
 }) {
   const { user, period, today } = await getPeriod(searchParams);
-  const [kpis, trend, byCat, recent, wallets] = await Promise.all([
+  const [kpis, trend, byCat, recent, wallets, budgets] = await Promise.all([
     getKpis(user.id, period),
     getTrend(user.id, period, today),
     getByCategory(user.id, period, "EXPENSE", 5),
     listTransactions(user.id, {}, 6),
     listWallets(user.id),
+    getBudgetsProgress(user.id, `${today.slice(0, 7)}-01`),
   ]);
+  const alerts = budgets.filter((b) => b.status !== "ok");
   const cur = user.currency;
 
   if (recent.total === 0)
@@ -160,24 +163,69 @@ async function Content({
           </ul>
         </Card>
 
-        <Card className="xl:col-span-4">
-          <CardHeader>
-            <CardTitle>Счета</CardTitle>
-            <Link href="/settings" className="text-primary text-sm font-semibold hover:underline">
-              Управлять
-            </Link>
-          </CardHeader>
-          <ul className="grid gap-3">
-            {wallets.map((w) => (
-              <li key={w.id} className="flex items-center justify-between gap-3 text-[15px]">
-                <span className="truncate font-medium">{w.name}</span>
-                <span className={`num font-semibold ${w.balance < 0 ? "text-expense" : ""}`}>
-                  {formatMoney(w.balance, cur)}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </Card>
+        <div className="grid content-start gap-3 sm:gap-5 xl:col-span-4">
+          {alerts.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Бюджеты</CardTitle>
+                <Link
+                  href="/budgets"
+                  className="text-primary text-sm font-semibold hover:underline"
+                >
+                  Все
+                </Link>
+              </CardHeader>
+              <ul className="grid gap-4">
+                {alerts.slice(0, 3).map((b) => (
+                  <li key={b.id} className="grid gap-1.5">
+                    <div className="flex items-center justify-between gap-2 text-sm">
+                      <span className="inline-flex min-w-0 items-center gap-1.5 font-medium">
+                        {b.status === "over" ? (
+                          <OctagonAlert
+                            className="text-expense size-4 shrink-0"
+                            aria-label="Превышен"
+                          />
+                        ) : (
+                          <TriangleAlert
+                            className="text-warning size-4 shrink-0"
+                            aria-label="Почти исчерпан"
+                          />
+                        )}
+                        <span className="truncate">{b.name}</span>
+                      </span>
+                      <span className="num text-muted-foreground">
+                        {formatMoney(b.spent, cur)} / {formatMoney(b.limit, cur)}
+                      </span>
+                    </div>
+                    <Progress
+                      value={b.pct * 100}
+                      tone={b.status === "over" ? "expense" : "warning"}
+                      aria-label={`${b.name}: ${Math.round(b.pct * 100)}%`}
+                    />
+                  </li>
+                ))}
+              </ul>
+            </Card>
+          )}
+          <Card>
+            <CardHeader>
+              <CardTitle>Счета</CardTitle>
+              <Link href="/settings" className="text-primary text-sm font-semibold hover:underline">
+                Управлять
+              </Link>
+            </CardHeader>
+            <ul className="grid gap-3">
+              {wallets.map((w) => (
+                <li key={w.id} className="flex items-center justify-between gap-3 text-[15px]">
+                  <span className="truncate font-medium">{w.name}</span>
+                  <span className={`num font-semibold ${w.balance < 0 ? "text-expense" : ""}`}>
+                    {formatMoney(w.balance, cur)}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </Card>
+        </div>
       </div>
     </div>
   );

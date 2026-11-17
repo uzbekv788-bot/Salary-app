@@ -154,12 +154,31 @@ export function resolvePeriod(params: Params, today: string): ResolvedPeriod {
 
   const days = differenceInCalendarDays(to, from) + 1;
   const isCurrent = from <= todayDate && todayDate <= to;
+
+  // Предыдущий период: для неделя/месяц/квартал/год — предыдущий календарный (октябрь для ноября),
+  // для произвольного — столько же дней перед ним.
+  let prevFrom: Date;
+  let prevTo: Date;
+  if (kind === "custom") {
+    prevFrom = subDays(from, days);
+    prevTo = subDays(from, 1);
+  } else {
+    [prevFrom, prevTo] = rangeFor(kind, shift[kind](from, -1));
+  }
+  // Текущий незавершённый период честно сравниваем с тем же числом дней прошлого:
+  // 1–17 ноября против 1–17 октября, а не против всего октября.
+  if (isCurrent) {
+    const elapsed = differenceInCalendarDays(todayDate, from);
+    const cut = addDays(prevFrom, elapsed);
+    if (cut < prevTo) prevTo = cut;
+  }
+
   return {
     kind,
     from: fmt(from),
     to: fmt(to),
-    prevFrom: fmt(subDays(from, days)),
-    prevTo: fmt(subDays(from, 1)),
+    prevFrom: fmt(prevFrom),
+    prevTo: fmt(prevTo),
     days,
     granularity: granularityFor(days),
     label: labelFor(kind, from, to),

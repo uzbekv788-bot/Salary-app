@@ -57,3 +57,10 @@ export const walletSchema = z.object({
   }),
 });
 export type WalletInput = z.input<typeof walletSchema>;
+
+export const budgetSchema = z.object({
+  categoryId: id,
+  month: z.string().regex(/^\d{4}-\d{2}-01$/, "Некорректный месяц"),
+  limit: positiveAmount,
+});
+export type BudgetInput = z.input<typeof budgetSchema>;

@@ -100,6 +100,13 @@ export function TransactionForm({
       toast.success(
         initial ? "Операция изменена" : type === "INCOME" ? "Доход добавлен" : "Расход добавлен",
       );
+      const b = res.data.budget;
+      if (b) {
+        const pct = Math.round(b.pct * 100);
+        if (b.status === "over")
+          toast.error(`Бюджет «${b.name}» превышен: ${pct}% от лимита`, { duration: 6000 });
+        else toast.warning(`Бюджет «${b.name}» почти исчерпан: ${pct}%`, { duration: 6000 });
+      }
       onDone();
     });
   };

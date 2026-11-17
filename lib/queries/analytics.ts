@@ -172,3 +172,115 @@ export async function getByCategory(
   }
   return { slices, total: sum, all: all.map((r) => ({ ...r, share: sum ? r.total / sum : 0 })) };
 }
+
+/* ───────────── Аналитика (tasks.md 10.1) ───────────── */
+
+export type MonthPoint = { month: string; label: string; income: number; expense: number };
+
+/** Доходы/расходы по месяцам: последние N месяцев, заканчивая месяцем `endDate`. */
+export async function getMonthComparison(
+  userId: string,
+  endDate: string,
+  months = 6,
+): Promise<MonthPoint[]> {
+  const end = startOfMonth(parseDate(endDate)!);
+  const start = addMonths(end, -(months - 1));
+  const rows = await db.$queryRaw<{ m: Date; income: bigint | null; expense: bigint | null }[]>`
+    SELECT date_trunc('month', date)::date AS m,
+           SUM(amount) FILTER (WHERE type = 'INCOME')  AS income,
+           SUM(amount) FILTER (WHERE type = 'EXPENSE') AS expense
+    FROM "transaction" t
+    WHERE t."userId" = ${userId} AND t."deletedAt" IS NULL
+      AND date >= ${d(format(start, "yyyy-MM-dd"))} AND date < ${d(format(addMonths(end, 1), "yyyy-MM-dd"))}
+    GROUP BY 1`;
+  const by = new Map(rows.map((r) => [r.m.toISOString().slice(0, 7), r]));
+  return Array.from({ length: months }, (_, i) => {
+    const m = addMonths(start, i);
+    const key = format(m, "yyyy-MM");
+    const r = by.get(key);
+    return {
+      month: key,
+      label: format(m, "LLL yy", { locale: ru }).replace(".", ""),
+      income: Number(r?.income ?? 0),
+      expense: Number(r?.expense ?? 0),
+    };
+  });
+}
+
+/** Средний расход в день и самый дорогой день периода (дни считаются до сегодня). */
+export async function getDailyStats(userId: string, p: ResolvedPeriod, today: string) {
+  const to = p.to < today ? p.to : today;
+  const [top] = await db.$queryRaw<{ date: Date; total: bigint }[]>`
+    SELECT date, SUM(amount) AS total FROM "transaction" t
+    WHERE t."userId" = ${userId} AND t."deletedAt" IS NULL AND type = 'EXPENSE' AND date BETWEEN ${d(p.from)} AND ${d(to)}
+    GROUP BY date ORDER BY total DESC LIMIT 1`;
+  const elapsed = Math.max(1, Math.round((d(to).getTime() - d(p.from).getTime()) / 86_400_000) + 1);
+  return {
+    elapsedDays: to < p.from ? 0 : elapsed,
+    maxDay: top ? { date: top.date.toISOString().slice(0, 10), total: Number(top.total) } : null,
+  };
+}
+
+/* ───────────── Бюджеты (tasks.md 11.1) ───────────── */
+
+export type BudgetStatus = "ok" | "warning" | "over";
+export type BudgetProgress = {
+  id: string;
+  categoryId: string;
+  name: string;
+  icon: string;
+  color: string;
+  limit: number;
+  spent: number;
+  pct: number;
+  status: BudgetStatus;
+};
+
+export const budgetStatus = (pct: number): BudgetStatus =>
+  pct > 1 ? "over" : pct >= 0.8 ? "warning" : "ok";
+
+/** Прогресс бюджетов месяца (`month` — "YYYY-MM-01"). */
+export async function getBudgetsProgress(
+  userId: string,
+  month: string,
+  categoryId?: string,
+): Promise<BudgetProgress[]> {
+  const from = d(month);
+  const to = d(format(addMonths(parseDate(month)!, 1), "yyyy-MM-dd"));
+  const rows = await db.$queryRaw<
+    {
+      id: string;
+      categoryId: string;
+      name: string;
+      icon: string;
+      color: string;
+      limit: bigint;
+      spent: bigint | null;
+    }[]
+  >`
+    SELECT b.id, b."categoryId", c.name, c.icon, c.color, b."limit",
+           (SELECT SUM(t.amount) FROM "transaction" t
+             WHERE t."userId" = b."userId" AND t."categoryId" = b."categoryId" AND t."deletedAt" IS NULL
+               AND t.type = 'EXPENSE' AND t.date >= ${from} AND t.date < ${to}) AS spent
+    FROM budget b JOIN category c ON c.id = b."categoryId"
+    WHERE b."userId" = ${userId} AND b.month = ${from} ${categoryId ? Prisma.sql`AND b."categoryId" = ${categoryId}` : Prisma.empty}
+    ORDER BY c."sortOrder", c.name`;
+  return rows
+    .map((r) => {
+      const limit = Number(r.limit);
+      const spent = Number(r.spent ?? 0);
+      const pct = limit ? spent / limit : 0;
+      return {
+        id: r.id,
+        categoryId: r.categoryId,
+        name: r.name,
+        icon: r.icon,
+        color: r.color,
+        limit,
+        spent,
+        pct,
+        status: budgetStatus(pct),
+      };
+    })
+    .sort((a, b) => b.pct - a.pct);
+}
