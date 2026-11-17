@@ -6,25 +6,25 @@
 
 ## 1. Технологический стек
 
-| Слой           | Технология                                                | Почему                                                                   |
-| -------------- | --------------------------------------------------------- | ------------------------------------------------------------------------ |
-| Фреймворк      | **Next.js 15** (App Router, React 19, TypeScript strict)  | Server Components, Server Actions, единый проект фронт+бэк               |
-| Стили          | **Tailwind CSS v4**                                       | Токены дизайна в `@theme`, быстрая вёрстка                               |
-| UI-компоненты  | **shadcn/ui** (Radix UI)                                  | Доступные примитивы, полный контроль над кодом                           |
-| Иконки         | **lucide-react**                                          | Требование design.md                                                     |
-| Графики        | **Recharts**                                              | Area/Line/Bar/Pie, кастомные тултипы, SSR-безопасен как client component |
-| Анимации       | **motion** (Framer Motion)                                | Появление, модалки, stagger                                              |
-| Тема           | **next-themes**                                           | Светлая/тёмная/системная                                                 |
-| БД             | **PostgreSQL** (Neon / Supabase)                          | Агрегации `GROUP BY`, `date_trunc`                                       |
-| ORM            | **Prisma**                                                | Типобезопасность, миграции                                               |
-| Аутентификация | **Auth.js v5** (NextAuth) + Prisma Adapter                | Email/пароль (Credentials) + Google                                      |
-| Валидация      | **zod**                                                   | Общие схемы для клиента и сервера                                        |
-| Формы          | **react-hook-form** + `@hookform/resolvers/zod`           |                                                                          |
-| Даты           | **date-fns** + `date-fns-tz` (locale `ru`)                |                                                                          |
-| CSV            | **papaparse**                                             | Импорт/экспорт                                                           |
-| Тесты          | **Vitest** + Testing Library (unit), **Playwright** (e2e) |                                                                          |
-| Качество       | ESLint, Prettier, Husky + lint-staged                     |                                                                          |
-| Деплой         | **Vercel** + Neon Postgres                                |                                                                          |
+| Слой           | Технология                                                                     | Почему                                                                                  |
+| -------------- | ------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------- |
+| Фреймворк      | **Next.js 16** (App Router, React 19, Cache Components)                        | Server Components, Server Actions, частичный пререндер (PPR)                            |
+| Стили          | **Tailwind CSS v4**                                                            | Токены дизайна в `@theme`, быстрая вёрстка                                              |
+| UI-компоненты  | Компоненты в стиле **shadcn/ui** на **Radix UI** (`radix-ui`), шторки — `vaul` | Доступные примитивы, полный контроль над кодом                                          |
+| Иконки         | **lucide-react**                                                               | Требование design.md                                                                    |
+| Графики        | **Recharts**                                                                   | Area/Line/Bar/Pie, кастомные тултипы, SSR-безопасен как client component                |
+| Анимации       | **motion** (Framer Motion)                                                     | Появление, модалки, stagger                                                             |
+| Тема           | **next-themes**                                                                | Светлая/тёмная/системная                                                                |
+| БД             | **PostgreSQL** (Neon / Supabase)                                               | Агрегации `GROUP BY`, `date_trunc`                                                      |
+| ORM            | **Prisma 7** (driver adapter `@prisma/adapter-pg`)                             | Типобезопасность, миграции                                                              |
+| Аутентификация | **Better Auth** 1.7 + Prisma adapter                                           | Email/пароль из коробки, Google, встроенный rate-limit; Auth.js v5 так и остался в beta |
+| Валидация      | **zod**                                                                        | Общие схемы для клиента и сервера                                                       |
+| Формы          | **react-hook-form** + `@hookform/resolvers/zod`                                |                                                                                         |
+| Даты           | **date-fns** + `date-fns-tz` (locale `ru`)                                     |                                                                                         |
+| CSV            | **papaparse**                                                                  | Импорт/экспорт                                                                          |
+| Тесты          | **Vitest** + Testing Library (unit), **Playwright** (e2e)                      |                                                                                         |
+| Качество       | ESLint, Prettier, Husky + lint-staged                                          |                                                                                         |
+| Деплой         | **Vercel** + Neon Postgres                                                     |                                                                                         |
 
 Менеджер пакетов: **pnpm**. Node.js ≥ 20.
 
@@ -59,7 +59,7 @@ salary/
 │  └─ dashboard/                        # KpiCard, RecentTransactions
 ├─ lib/
 │  ├─ db.ts                             # Prisma client singleton
-│  ├─ auth.ts                           # Конфиг Auth.js
+│  ├─ auth.ts                           # Конфиг Better Auth
 │  ├─ money.ts                          # toMinor/fromMinor/formatMoney
 │  ├─ period.ts                         # Расчёт диапазонов периодов
 │  ├─ validators/                       # zod-схемы
@@ -94,7 +94,7 @@ model User {
   onboarded     Boolean   @default(false)
   createdAt     DateTime  @default(now())
 
-  accounts      Account[]      // OAuth (Auth.js)
+  accounts      Account[]      // OAuth и пароли (Better Auth)
   sessions      Session[]
   wallets       Wallet[]
   categories    Category[]
@@ -161,7 +161,7 @@ model Budget {
   @@unique([userId, categoryId, month])
 }
 
-// + стандартные модели Auth.js: Account, Session, VerificationToken
+// + модели Better Auth: Account (здесь же хеш пароля), Session, Verification
 ```
 
 ### Правила
@@ -187,7 +187,7 @@ model Budget {
 | `/budgets`            | авторизован                    | Лимиты на текущий месяц                                         |
 | `/settings`           | авторизован                    | Профиль, валюта, тема, счета, импорт/экспорт, удаление аккаунта |
 
-`middleware.ts`: неавторизованных → `/login`; авторизованных без онбординга → `/onboarding`.
+`proxy.ts` (в Next 16 `middleware` переименован в `proxy`): по наличию cookie сессии неавторизованных → `/login`; авторизованных без онбординга → `/onboarding`.
 
 **Состояние периода** хранится в URL: `?period=month&date=2026-11` или `?from=2026-01-01&to=2026-03-31`, + `&wallet=<id>`. Так ссылки делимы, а Server Components читают `searchParams`.
 
@@ -278,7 +278,7 @@ export const transactionSchema = z.object({
 - Проверка владения: при создании операции — `category.userId === userId && wallet.userId === userId`.
 - Rate-limit на `/login` и `register`: 5 попыток / 15 мин по IP (Upstash Ratelimit или in-memory в dev).
 - Заголовки: CSP, `X-Frame-Options: DENY`, `Referrer-Policy: strict-origin-when-cross-origin`.
-- Секреты только в переменных окружения: `DATABASE_URL`, `AUTH_SECRET`, `AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET`.
+- Секреты только в переменных окружения: `DATABASE_URL`, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`.
 
 ---
 
@@ -324,3 +324,18 @@ CI (GitHub Actions): `lint → typecheck → unit → build → e2e` на каж
 - Lighthouse mobile: Performance ≥ 90, Accessibility ≥ 95.
 - Нет ошибок TypeScript и ESLint; покрытие unit-тестами `lib/` ≥ 80%.
 - Проверено в Chrome, Safari (iOS), Firefox; в обеих темах; на ширинах 360 / 768 / 1280 / 1920.
+
+---
+
+## 14. Отличия реализации от первоначального плана
+
+| Решение                                         | Почему                                                                                                                                                                                  |
+| ----------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Next.js 16 вместо 15                            | Актуальная стабильная версия на момент старта. `middleware` → `proxy.ts`; с `cacheComponents` всё, что читает сессию, рендерится внутри `<Suspense>` (статическая оболочка + стриминг). |
+| Better Auth вместо Auth.js                      | Auth.js v5 так и не вышел из beta; вход по паролю в нём не рекомендуется. Better Auth даёт email/пароль, Google и лимит попыток из коробки.                                             |
+| Prisma 7                                        | Новый генератор `prisma-client` (`lib/generated/prisma`), подключение через `@prisma/adapter-pg`, настройки в `prisma.config.ts`.                                                       |
+| Список операций: «Показать ещё» через `?limit=` | Проще курсорной пагинации и сохраняет ссылку; при объёмах до тысяч операций на период разницы нет.                                                                                      |
+| «Прошлый период» = предыдущий календарный       | Ноябрь сравнивается с октябрём; текущий незавершённый — с тем же числом дней (1–17 ноября против 1–17 октября).                                                                         |
+| Динамика по дням — нарастающим итогом           | Дневные суммы «пиковые» (зарплата 2 раза в месяц); накопленные линии читаются лучше.                                                                                                    |
+| Цвета графиков отделены от цветов текста        | Пара доход/расход проверена `validate_palette.js` на различимость при дейтеранопии (см. design.md §2.1).                                                                                |
+| Донат: максимум 5 сегментов + легенда-список    | Цвета категорий выбирает пользователь, 8 цветов нельзя сделать попарно различимыми — смысл дублируется иконкой и подписью.                                                              |
