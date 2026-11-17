@@ -4,16 +4,22 @@ import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAddTransaction } from "@/components/transactions/add-transaction-provider";
 
-export function AddTransactionButton({ className }: { className?: string }) {
+export function AddTransactionButton({
+  className,
+  label = "Добавить",
+}: {
+  className?: string;
+  label?: string;
+}) {
   const { openForm } = useAddTransaction();
   return (
     <Button
-      onClick={openForm}
+      onClick={() => openForm()}
       className={className}
       aria-keyshortcuts="N"
       title="Добавить операцию (N)"
     >
-      <Plus /> Добавить
+      <Plus /> {label}
     </Button>
   );
 }

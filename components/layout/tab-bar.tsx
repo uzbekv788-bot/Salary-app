@@ -39,7 +39,7 @@ export function TabBar({ footer }: { footer: React.ReactNode }) {
               <div key="add" className="flex flex-1 justify-center">
                 <button
                   type="button"
-                  onClick={openForm}
+                  onClick={() => openForm()}
                   aria-label="Добавить операцию"
                   className="bg-primary text-primary-foreground shadow-primary/30 focus-visible:ring-ring -mt-7 inline-flex size-14 items-center justify-center rounded-full shadow-lg transition-transform outline-none focus-visible:ring-2 focus-visible:ring-offset-2 active:scale-95"
                 >

@@ -1,17 +1,16 @@
 import { Suspense } from "react";
-import { Settings } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { PageSkeleton } from "@/components/layout/page-skeleton";
-import { Card } from "@/components/ui/card";
-import { EmptyState } from "@/components/ui/empty-state";
+import { WalletsSection } from "@/components/settings/wallets-section";
+import { listWallets } from "@/lib/queries/finance";
 import { requireUser } from "@/lib/session";
 
 export const metadata = { title: "Настройки" };
 
-export default function Page() {
+export default function SettingsPage() {
   return (
     <>
-      <PageHeader title="Настройки" />
+      <PageHeader title="Настройки" showAdd={false} />
       <Suspense fallback={<PageSkeleton />}>
         <Content />
       </Suspense>
@@ -20,14 +19,11 @@ export default function Page() {
 }
 
 async function Content() {
-  await requireUser();
+  const user = await requireUser();
+  const wallets = await listWallets(user.id, { includeArchived: true });
   return (
-    <Card>
-      <EmptyState
-        icon={Settings}
-        title="Раздел в разработке"
-        description="Профиль, счета, импорт и экспорт — шаг 12."
-      />
-    </Card>
+    <div className="grid max-w-3xl gap-5">
+      <WalletsSection wallets={wallets} currency={user.currency} />
+    </div>
   );
 }

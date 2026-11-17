@@ -1,14 +1,13 @@
 import { Suspense } from "react";
-import { Tags } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { PageSkeleton } from "@/components/layout/page-skeleton";
-import { Card } from "@/components/ui/card";
-import { EmptyState } from "@/components/ui/empty-state";
+import { CategoryManager } from "@/components/categories/category-manager";
+import { listCategories } from "@/lib/queries/finance";
 import { requireUser } from "@/lib/session";
 
 export const metadata = { title: "Категории" };
 
-export default function Page() {
+export default function CategoriesPage() {
   return (
     <>
       <PageHeader title="Категории" />
@@ -20,14 +19,6 @@ export default function Page() {
 }
 
 async function Content() {
-  await requireUser();
-  return (
-    <Card>
-      <EmptyState
-        icon={Tags}
-        title="Раздел в разработке"
-        description="Управление категориями — шаг 7."
-      />
-    </Card>
-  );
+  const user = await requireUser();
+  return <CategoryManager categories={await listCategories(user.id, { includeArchived: true })} />;
 }

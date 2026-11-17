@@ -3,7 +3,7 @@ import { Sidebar } from "@/components/layout/sidebar";
 import { TabBar } from "@/components/layout/tab-bar";
 import { UserCard, UserCardSkeleton } from "@/components/layout/user-card";
 import { AddTransactionProvider } from "@/components/transactions/add-transaction-provider";
-import { AddTransactionSheet } from "@/components/transactions/add-transaction-sheet";
+import { AddTransactionLoader } from "@/components/transactions/add-transaction-loader";
 
 /**
  * Каркас приложения (tasks.md 5.1). Оболочка (меню, отступы) статическая и показывается
@@ -30,7 +30,9 @@ export default function AppLayout({ children }: LayoutProps<"/">) {
       <main className="mx-auto w-full max-w-[1280px] px-4 pt-6 pb-28 sm:px-8 md:pb-10 md:pl-[128px] lg:pl-[312px] xl:max-w-[1600px]">
         {children}
       </main>
-      <AddTransactionSheet />
+      <Suspense fallback={null}>
+        <AddTransactionLoader />
+      </Suspense>
     </AddTransactionProvider>
   );
 }
