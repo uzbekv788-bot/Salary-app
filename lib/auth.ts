@@ -51,6 +51,16 @@ export const auth = betterAuth({
     },
   },
 
+  // В dev разрешаем запросы с адреса, с которого открыто приложение (превью, туннели).
+  // В production — только BETTER_AUTH_URL: защита от CSRF с чужих сайтов.
+  trustedOrigins:
+    process.env.NODE_ENV === "production"
+      ? undefined
+      : (request) => {
+          const origin = request?.headers.get("origin");
+          return origin ? [origin] : [];
+        },
+
   plugins: [nextCookies()],
 });
 
