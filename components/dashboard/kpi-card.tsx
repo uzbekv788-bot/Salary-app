@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { ArrowDownRight, ArrowUpRight, Minus } from "lucide-react";
 import { Card, Overline } from "@/components/ui/card";
-import { Sparkline } from "@/components/charts/sparkline";
+import { Sparkline } from "@/components/charts/lazy";
 import { cn } from "@/lib/utils";
 
 /** Плавный count-up числа (design.md §9): 500 мс, выключается при reduced-motion. */
@@ -11,14 +11,15 @@ function useCountUp(target: number, duration = 500) {
   const [value, setValue] = useState(target);
   const from = useRef(target);
   useEffect(() => {
+    // Первый показ — без анимации: число сразу в HTML (быстрый LCP). Анимируем только смену значения.
+    if (from.current === target) return;
     const instant = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     const start = performance.now();
-    const a = from.current === target ? target * 0.85 : from.current;
+    const a = from.current;
     let raf = 0;
     const tick = (t: number) => {
       const k = instant ? 1 : Math.min(1, (t - start) / duration);
-      const eased = 1 - Math.pow(1 - k, 3);
-      setValue(a + (target - a) * eased);
+      setValue(a + (target - a) * (1 - Math.pow(1 - k, 3)));
       if (k < 1) raf = requestAnimationFrame(tick);
       else from.current = target;
     };

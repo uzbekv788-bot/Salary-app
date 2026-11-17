@@ -140,11 +140,11 @@ export function TransactionForm({
         value={type}
         onChange={switchType}
         options={[
-          { value: "EXPENSE", label: "Расход", activeClass: "bg-expense text-white" },
+          { value: "EXPENSE", label: "Расход", activeClass: "bg-expense text-expense-foreground" },
           {
             value: "INCOME",
             label: "Доход",
-            activeClass: "bg-income text-white dark:text-primary-foreground",
+            activeClass: "bg-income text-income-foreground",
           },
         ]}
       />

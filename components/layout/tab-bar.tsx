@@ -18,7 +18,7 @@ const MAIN = [
 const MORE = NAV_ITEMS.filter((i) => !MAIN.some((m) => m?.href === i.href));
 
 const tabClass =
-  "flex flex-1 flex-col items-center justify-center gap-0.5 rounded-md py-1.5 text-[11px] font-medium outline-none focus-visible:ring-2 focus-visible:ring-ring";
+  "flex flex-1 flex-col items-center justify-center gap-0.5 rounded-md py-1.5 text-xs font-semibold outline-none focus-visible:ring-2 focus-visible:ring-ring";
 
 /** Нижний таббар для мобильных (design.md §6). */
 export function TabBar({ footer }: { footer: React.ReactNode }) {
@@ -53,7 +53,7 @@ export function TabBar({ footer }: { footer: React.ReactNode }) {
               key={item.href}
               href={item.href}
               aria-current={active ? "page" : undefined}
-              className={cn(tabClass, active ? "text-primary" : "text-muted-foreground")}
+              className={cn(tabClass, active ? "text-primary" : "text-foreground/80")}
             >
               <item.icon className="size-6" />
               {item.label}
@@ -63,7 +63,7 @@ export function TabBar({ footer }: { footer: React.ReactNode }) {
         <button
           type="button"
           onClick={() => setMoreOpen(true)}
-          className={cn(tabClass, moreActive ? "text-primary" : "text-muted-foreground")}
+          className={cn(tabClass, moreActive ? "text-primary" : "text-foreground/80")}
         >
           <Menu className="size-6" />
           Ещё

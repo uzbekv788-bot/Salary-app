@@ -17,7 +17,11 @@ export function Sparkline({
   return (
     <div className="h-8" aria-hidden>
       <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={data} margin={{ top: 2, right: 2, bottom: 2, left: 2 }}>
+        <LineChart
+          accessibilityLayer={false}
+          data={data}
+          margin={{ top: 2, right: 2, bottom: 2, left: 2 }}
+        >
           <YAxis hide domain={["dataMin", "dataMax"]} />
           <Line
             type="monotone"

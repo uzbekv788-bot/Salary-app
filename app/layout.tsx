@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
-import { Toaster } from "sonner";
+import { Toaster } from "@/components/ui/toaster";
 import { ThemeProvider } from "@/components/theme/theme-provider";
 import "./globals.css";
 
@@ -27,10 +27,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <body className="min-h-full font-sans">
         <ThemeProvider>
           {children}
-          <Toaster
-            position="bottom-right"
-            toastOptions={{ className: "glass-strong !rounded-md" }}
-          />
+          <Toaster />
         </ThemeProvider>
       </body>
     </html>

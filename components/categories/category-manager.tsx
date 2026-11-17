@@ -118,11 +118,15 @@ export function CategoryManager({ categories }: { categories: CategoryDTO[] }) {
           value={type}
           onChange={setType}
           options={[
-            { value: "EXPENSE", label: "Расходы", activeClass: "bg-expense text-white" },
+            {
+              value: "EXPENSE",
+              label: "Расходы",
+              activeClass: "bg-expense text-expense-foreground",
+            },
             {
               value: "INCOME",
               label: "Доходы",
-              activeClass: "bg-income text-white dark:text-primary-foreground",
+              activeClass: "bg-income text-income-foreground",
             },
           ]}
         />

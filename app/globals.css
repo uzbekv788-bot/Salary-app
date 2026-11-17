@@ -9,10 +9,13 @@
   --foreground: #0f172a;
   --muted-foreground: #475569;
 
-  --primary: #059669;
+  /* emerald-700: белый текст на кнопке ≥ 4.5:1 (axe, WCAG AA) */
+  --primary: #047857;
   --primary-foreground: #ffffff;
-  --income: #059669;
+  --income: #047857;
+  --income-foreground: #ffffff;
   --expense: #e11d48;
+  --expense-foreground: #ffffff;
   --warning: #d97706;
   --info: #0284c7;
   --ring: #10b981;
@@ -56,7 +59,10 @@
   --primary: #34d399;
   --primary-foreground: #022c22;
   --income: #34d399;
+  --income-foreground: #022c22;
   --expense: #fb7185;
+  /* на светлом коралловом фоне — тёмный текст (белый давал 2.7:1) */
+  --expense-foreground: #4c0519;
   --warning: #fbbf24;
   --info: #38bdf8;
   --ring: #34d399;
@@ -97,7 +103,9 @@
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
   --color-income: var(--income);
+  --color-income-foreground: var(--income-foreground);
   --color-expense: var(--expense);
+  --color-expense-foreground: var(--expense-foreground);
   --color-warning: var(--warning);
   --color-info: var(--info);
   --color-ring: var(--ring);
@@ -117,12 +125,14 @@
 /* ───────────────────────── База ───────────────────────── */
 html {
   color-scheme: light;
+  overflow-x: clip;
 }
 html.dark {
   color-scheme: dark;
 }
 
 body {
+  overflow-x: clip;
   background-color: var(--background);
   background-image: var(--bg-gradient);
   background-attachment: fixed;

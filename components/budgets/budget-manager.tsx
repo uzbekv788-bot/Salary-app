@@ -29,6 +29,7 @@ import { formatMoney } from "@/lib/money";
 import type { BudgetProgress } from "@/lib/queries/analytics";
 import type { CategoryDTO } from "@/lib/queries/finance";
 import { cn } from "@/lib/utils";
+import { useDesktopAutoFocus } from "@/lib/hooks/use-desktop-autofocus";
 
 const STATUS = {
   ok: { tone: "primary", icon: CircleCheck, text: "В пределах лимита", cls: "text-income" },
@@ -77,7 +78,7 @@ export function BudgetManager(props: {
             </span>
           )}
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           {budgets.length === 0 && (
             <Button
               variant="secondary"
@@ -225,6 +226,7 @@ function BudgetForm({
 }) {
   const [categoryId, setCategoryId] = useState(editing?.categoryId ?? free[0]?.id ?? "");
   const [limit, setLimit] = useState(editing ? minorToInput(editing.limit) : "");
+  const focusRef = useDesktopAutoFocus<HTMLInputElement>();
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [pending, startTransition] = useTransition();
   return (
@@ -270,7 +272,7 @@ function BudgetForm({
           onChange={(e) => setLimit(formatAmountInput(e.target.value))}
           className="num h-14 text-2xl font-semibold"
           aria-invalid={Boolean(errors.limit)}
-          autoFocus
+          ref={focusRef}
         />
         {errors.limit && <p className="text-expense text-[13px]">{errors.limit}</p>}
       </div>

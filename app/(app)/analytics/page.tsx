@@ -4,7 +4,7 @@ import { CalendarDays, Flame, Lightbulb, TrendingDown, TrendingUp } from "lucide
 import { PageHeader } from "@/components/layout/page-header";
 import { PageSkeleton } from "@/components/layout/page-skeleton";
 import { UrlSegmented } from "@/components/analytics/analytics-controls";
-import { MonthBars } from "@/components/charts/month-bars";
+import { MonthBars } from "@/components/charts/lazy";
 import { Card, CardHeader, CardTitle, Overline } from "@/components/ui/card";
 import { CategoryIcon } from "@/components/ui/category-icon";
 import { categoryColorVar } from "@/lib/design/category-palette";
@@ -121,11 +121,15 @@ async function Content({
               label="Тип"
               fallback="EXPENSE"
               options={[
-                { value: "EXPENSE", label: "Расходы", activeClass: "bg-expense text-white" },
+                {
+                  value: "EXPENSE",
+                  label: "Расходы",
+                  activeClass: "bg-expense text-expense-foreground",
+                },
                 {
                   value: "INCOME",
                   label: "Доходы",
-                  activeClass: "bg-income text-white dark:text-primary-foreground",
+                  activeClass: "bg-income text-income-foreground",
                 },
               ]}
             />

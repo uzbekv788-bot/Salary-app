@@ -52,11 +52,11 @@ export function TransactionFilters({
         onChange={(v) => set({ type: v === "ALL" ? null : v, category: null })}
         options={[
           { value: "ALL", label: "Все" },
-          { value: "EXPENSE", label: "Расходы", activeClass: "bg-expense text-white" },
+          { value: "EXPENSE", label: "Расходы", activeClass: "bg-expense text-expense-foreground" },
           {
             value: "INCOME",
             label: "Доходы",
-            activeClass: "bg-income text-white dark:text-primary-foreground",
+            activeClass: "bg-income text-income-foreground",
           },
         ]}
       />

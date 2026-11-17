@@ -15,6 +15,7 @@ import {
 } from "@/lib/design/category-palette";
 import type { CategoryDTO } from "@/lib/queries/finance";
 import { cn } from "@/lib/utils";
+import { useDesktopAutoFocus } from "@/lib/hooks/use-desktop-autofocus";
 
 /** Создание/редактирование категории с предпросмотром (tasks.md 7.3). */
 export function CategoryForm({
@@ -27,6 +28,7 @@ export function CategoryForm({
   onDone: () => void;
 }) {
   const [name, setName] = useState(initial?.name ?? "");
+  const focusRef = useDesktopAutoFocus<HTMLInputElement>();
   const [icon, setIcon] = useState(initial?.icon ?? "ShoppingBag");
   const [color, setColor] = useState<CategoryColor>((initial?.color as CategoryColor) ?? "emerald");
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -62,7 +64,7 @@ export function CategoryForm({
           maxLength={40}
           onChange={(e) => setName(e.target.value)}
           aria-invalid={Boolean(errors.name)}
-          autoFocus
+          ref={focusRef}
         />
         {errors.name && <p className="text-expense text-[13px]">{errors.name}</p>}
       </div>
