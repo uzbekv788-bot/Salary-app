@@ -53,7 +53,7 @@ async function main() {
     data: { userId, name: "Карта", type: "CARD", initialBalance: rub(45_000) },
   });
   const cash = await db.wallet.create({
-    data: { userId, name: "Наличные", type: "CASH", initialBalance: rub(5_000) },
+    data: { userId, name: "Наличные", type: "CASH", initialBalance: rub(60_000) },
   });
 
   const cats: Record<string, string> = {};

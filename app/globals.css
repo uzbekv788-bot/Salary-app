@@ -34,6 +34,13 @@
   --cat-orange: #f97316;
   --cat-slate: #64748b;
 
+  /* Цвета графиков ≠ цвета текста: пара доход/расход разведена по светлоте,
+     чтобы различаться при дейтеранопии (validate_palette.js: ΔE 10.6 light / ≥ 8 dark) */
+  --chart-income: #047857;
+  --chart-expense: #fb7185;
+  --chart-balance: #0284c7;
+  --chart-grid: rgba(15, 23, 42, 0.08);
+
   --bg-gradient:
     radial-gradient(60% 50% at 10% 0%, rgba(16, 185, 129, 0.25) 0%, transparent 60%),
     radial-gradient(50% 40% at 90% 20%, rgba(56, 189, 248, 0.18) 0%, transparent 60%),
@@ -60,15 +67,21 @@
   --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
   --overlay: rgba(0, 0, 0, 0.5);
 
-  --cat-emerald: #34d399;
-  --cat-sky: #38bdf8;
-  --cat-violet: #a78bfa;
-  --cat-amber: #fbbf24;
-  --cat-rose: #fb7185;
-  --cat-teal: #2dd4bf;
-  --cat-indigo: #818cf8;
-  --cat-orange: #fb923c;
-  --cat-slate: #94a3b8;
+  /* Проверено scripts/validate_palette.js (dark): светлота 0.48–0.67, контраст ≥ 3:1 */
+  --cat-emerald: #059669;
+  --cat-sky: #0284c7;
+  --cat-violet: #8b5cf6;
+  --cat-amber: #d97706;
+  --cat-rose: #f43f5e;
+  --cat-teal: #0d9488;
+  --cat-indigo: #6366f1;
+  --cat-orange: #ea580c;
+  --cat-slate: #64748b;
+
+  --chart-income: #059669;
+  --chart-expense: #f43f5e;
+  --chart-balance: #38bdf8;
+  --chart-grid: rgba(255, 255, 255, 0.08);
 
   --bg-gradient:
     radial-gradient(60% 50% at 10% 0%, rgba(16, 185, 129, 0.22) 0%, transparent 60%),
