@@ -63,9 +63,9 @@ export function GoalsCard({ goals, currency }: { goals: GoalDTO[]; currency: str
           return (
             <li key={g.id} className="grid gap-1.5">
               <div className="flex items-center justify-between gap-2 text-sm">
-                <span className="truncate font-medium">{g.name}</span>
-                <span className="num text-muted-foreground">
-                  {Math.floor(pct * 100)}% · {formatMoney(g.target - g.saved, currency)} осталось
+                <span className="min-w-0 truncate font-medium">{g.name}</span>
+                <span className="num text-muted-foreground shrink-0 whitespace-nowrap">
+                  {Math.floor(pct * 100)}% · ещё {formatMoney(g.target - g.saved, currency)}
                 </span>
               </div>
               <div
