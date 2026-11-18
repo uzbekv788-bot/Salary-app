@@ -120,7 +120,7 @@ export function OfflineSync({ userId }: { userId: string }) {
         <div
           role="status"
           aria-live="polite"
-          className="pointer-events-none fixed inset-x-0 top-2 z-40 flex justify-center px-4 md:left-[112px] lg:left-[296px]"
+          className="pointer-events-none fixed inset-x-0 bottom-[88px] z-40 flex justify-center px-4 md:top-2 md:bottom-auto md:left-[112px] lg:left-[296px]"
         >
           <div className="glass-strong pointer-events-auto inline-flex max-w-full items-center gap-2 rounded-full px-4 py-2 text-[13px] font-medium">
             {syncing ? (

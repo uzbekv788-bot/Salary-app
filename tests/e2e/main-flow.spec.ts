@@ -133,10 +133,15 @@ test("v1.1: расход без сети сохраняется на устро�
   page,
   context,
 }) => {
-  await page.goto("/login");
-  await page.getByLabel("Email").fill("demo@salary.app");
-  await page.getByLabel("Пароль").fill("demo12345");
-  await page.getByRole("button", { name: "Войти" }).click();
+  // Отдельный пользователь, чтобы не засорять демо-данные
+  await page.goto("/register");
+  await page.getByLabel("Имя").fill("Офлайн");
+  await page.getByLabel("Email").fill(`e2e-off-${Date.now()}-${test.info().project.name}@test.dev`);
+  await page.getByLabel("Пароль").fill("secret123");
+  await page.getByRole("button", { name: "Создать аккаунт" }).click();
+  await page.getByRole("button", { name: "Далее" }).click();
+  await page.getByRole("button", { name: "Далее" }).click();
+  await page.getByRole("button", { name: "Начать" }).click();
   await expect(page).toHaveURL(/\/dashboard/);
   await page.goto("/transactions");
   await expect(page.getByText(/операций: \d+/)).toBeVisible();
