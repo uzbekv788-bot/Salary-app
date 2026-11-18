@@ -1,4 +1,5 @@
 import { AddTransactionSheet } from "@/components/transactions/add-transaction-sheet";
+import { OfflineSync } from "@/components/offline/offline-sync";
 import { listCategories, listWallets } from "@/lib/queries/finance";
 import { todayIn } from "@/lib/period";
 import { requireUser } from "@/lib/session";
@@ -8,11 +9,15 @@ export async function AddTransactionLoader() {
   const user = await requireUser();
   const [categories, wallets] = await Promise.all([listCategories(user.id), listWallets(user.id)]);
   return (
-    <AddTransactionSheet
-      categories={categories}
-      wallets={wallets}
-      today={todayIn(user.timezone)}
-      currency={user.currency}
-    />
+    <>
+      <AddTransactionSheet
+        categories={categories}
+        wallets={wallets}
+        today={todayIn(user.timezone)}
+        currency={user.currency}
+        userId={user.id}
+      />
+      <OfflineSync userId={user.id} />
+    </>
   );
 }

@@ -35,7 +35,7 @@ export async function UserCard({ variant }: { variant: "sidebar" | "sheet" }) {
           <p className="text-muted-foreground truncate text-[13px]">{user.email}</p>
         </div>
         <ThemeToggle />
-        <SignOutButton />
+        <SignOutButton userId={user.id} />
       </div>
     );
 
@@ -49,7 +49,7 @@ export async function UserCard({ variant }: { variant: "sidebar" | "sheet" }) {
           <p className="text-muted-foreground truncate text-[13px]">{user.email}</p>
         </div>
         <span className="hidden lg:inline-flex">
-          <SignOutButton />
+          <SignOutButton userId={user.id} />
         </span>
       </div>
     </div>

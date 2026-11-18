@@ -129,6 +129,42 @@ test("v1.1: регулярный платёж из формы и цель с п�
   await expect(page.getByText("Достигнутые (1)")).toBeVisible();
 });
 
+test("v1.1: расход без сети сохраняется на устройстве и отправляется при появлении связи", async ({
+  page,
+  context,
+}) => {
+  await page.goto("/login");
+  await page.getByLabel("Email").fill("demo@salary.app");
+  await page.getByLabel("Пароль").fill("demo12345");
+  await page.getByRole("button", { name: "Войти" }).click();
+  await expect(page).toHaveURL(/\/dashboard/);
+  await page.goto("/transactions");
+  await expect(page.getByText(/операций: \d+/)).toBeVisible();
+  const note = `Офлайн-кофе ${test.info().project.name} ${Date.now()}`;
+
+  await context.setOffline(true);
+  await expect(page.getByText("Нет сети", { exact: false }).first()).toBeVisible();
+  const mobile = (page.viewportSize()?.width ?? 1280) < 768;
+  await page
+    .getByRole("button", { name: mobile ? "Добавить операцию" : "Добавить" })
+    .first()
+    .click();
+  const sheet = page.getByRole("dialog");
+  await sheet.getByLabel("Сумма").fill("350");
+  await sheet.getByRole("radio", { name: "Кафе и рестораны" }).click();
+  await sheet.getByLabel("Комментарий").fill(note);
+  await sheet.getByRole("button", { name: "Добавить", exact: true }).click();
+  await expect(page.getByText("Сохранено на устройстве")).toBeVisible();
+  await expect(page.getByText(/1 операция на устройстве/)).toBeVisible();
+
+  await context.setOffline(false);
+  await expect(page.getByText(/Отправлено операций, введённых без сети: 1/)).toBeVisible({
+    timeout: 15_000,
+  });
+  await expect(page.getByText(note)).toBeVisible();
+  await expect(page.getByText(/на устройстве/)).toBeHidden();
+});
+
 test.describe("доступность (axe, WCAG AA)", () => {
   test.beforeEach(async ({ page }) => {
     await page.goto("/login");

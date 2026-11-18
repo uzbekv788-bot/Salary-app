@@ -382,3 +382,20 @@ model GoalContribution { goalId; amount BigInt (> 0 пополнение, < 0 с
 Server Actions (`lib/actions/planning.ts`): `saveRecurring`, `setRecurringActive`, `deleteRecurring`, `saveGoal`, `deleteGoal`, `addContribution` (возвращает `justCompleted` для поздравления; снять больше накопленного нельзя). `saveTransaction(input, id?, repeat?)` — новая операция с `repeat` становится повторением №0 нового правила.
 
 Тесты: `tests/unit/recurring.test.ts`, `tests/integration/planning.test.ts` (параллельные запросы без дублей, пауза, перенос категории, цели, изоляция), e2e «v1.1» + axe для `/recurring` и `/goals`.
+
+---
+
+## 16. v1.1: PWA и офлайн-ввод
+
+| Часть           | Реализация                                                                                                                                                                                                     |
+| --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Манифест        | `app/manifest.ts`: `start_url: /dashboard`, `display: standalone`, иконки 192/512 + maskable 512, ярлыки. `app/icon.svg`, `app/apple-icon.png`, `appleWebApp` в metadata                                       |
+| Service worker  | `public/sw.js` (обычный JS, без сборщика), регистрируется `components/pwa/sw-register.tsx` только в production (`NEXT_PUBLIC_SW_DEV=1` — включить в dev). Заголовки для `/sw.js`: `no-cache`, свой CSP         |
+| Стратегии       | `/_next/static`, иконки, шрифты — cache-first. Навигация — network-first → сохранённая копия страницы → `/offline`. RSC-запросы и `/api/*` не кэшируются. Со страницей кэшируются её `/_next/static/*` из HTML |
+| Личные данные   | Кэш страниц `salary-pages-*` удаляется при выходе (`clearOfflineData`)                                                                                                                                         |
+| Офлайн-очередь  | `lib/offline-queue.ts` (IndexedDB `salary-offline`), записи с `userId` и `clientId` (UUID). `components/offline/offline-sync.tsx` — плашка и отправка (online / visibilitychange / загрузка)                   |
+| Идемпотентность | `Transaction.clientId`, `@@unique([userId, clientId])`. `saveTransaction` сначала ищет по `clientId`, при гонке ловит `P2002` и возвращает существующую операцию (лишнее регулярное правило откатывается)      |
+
+Почему не `experimental.useOffline` из Next.js 16: он задерживает Server Action до появления сети — форма зависает в «Сохраняем…», а закрытая вкладка теряет запись. Своя очередь в IndexedDB переживает перезагрузку и закрытие приложения.
+
+Ограничения: без сети можно только добавлять операции (не изменять/удалять); экраны, ни разу не открытые с сетью, показывают `/offline`; установка требует HTTPS (кроме localhost).

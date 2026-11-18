@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import { Toaster } from "@/components/ui/toaster";
+import { ServiceWorkerRegister } from "@/components/pwa/sw-register";
 import { ThemeProvider } from "@/components/theme/theme-provider";
 import "./globals.css";
 
@@ -10,6 +11,9 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
+  applicationName: "Salary",
+  appleWebApp: { capable: true, title: "Salary", statusBarStyle: "default" },
+  formatDetection: { telephone: false },
   title: { default: "Salary — финансовый аналитик", template: "%s · Salary" },
   description: "Доходы, расходы по категориям и наглядная аналитика ваших денег.",
 };
@@ -28,6 +32,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <ThemeProvider>
           {children}
           <Toaster />
+          <ServiceWorkerRegister />
         </ThemeProvider>
       </body>
     </html>

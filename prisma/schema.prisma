@@ -156,12 +156,15 @@ model Transaction {
   /// Мягкое удаление для кнопки «Отменить»
   deletedAt   DateTime?
   /// Создана регулярным правилом (null — введена вручную или правило удалено)
+  /// ID, выданный устройством при офлайн-вводе: повторная отправка не создаёт дубль
+  clientId    String?
   recurringId String?
   recurring   RecurringRule? @relation(fields: [recurringId], references: [id], onDelete: SetNull)
   user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   category    Category       @relation(fields: [categoryId], references: [id], onDelete: Restrict)
   wallet      Wallet         @relation(fields: [walletId], references: [id], onDelete: Restrict)
 
+  @@unique([userId, clientId])
   @@index([userId, date])
   @@index([userId, categoryId, date])
   @@map("transaction")

@@ -305,3 +305,64 @@ describe("изоляция новых данных между пользоват
     expect(await db.goalContribution.count({ where: { goalId } })).toBe(0);
   });
 });
+
+describe("офлайн-очередь: повторная отправка не создаёт дубль (tasks.md 17.3)", () => {
+  it("одна и та же операция по clientId сохраняется ровно один раз — подряд и параллельно", async () => {
+    const clientId = crypto.randomUUID();
+    const input = {
+      type: "EXPENSE" as const,
+      amount: "350",
+      categoryId: A.food,
+      walletId: A.walletId,
+      date: today,
+      note: "офлайн-кофе",
+      clientId,
+    };
+    const first = await finance.saveTransaction(input);
+    const again = await finance.saveTransaction(input);
+    expect(first.ok && again.ok && first.data.id === again.data.id).toBe(true);
+
+    const clientId2 = crypto.randomUUID();
+    const results = await Promise.all(
+      [1, 2, 3, 4, 5].map(() =>
+        finance.saveTransaction(
+          { ...input, clientId: clientId2, note: "параллельно" },
+          undefined,
+          "MONTHLY",
+        ),
+      ),
+    );
+    expect(results.every((r) => r.ok)).toBe(true);
+    expect(new Set(results.map((r) => (r.ok ? r.data.id : ""))).size).toBe(1);
+    expect(await db.transaction.count({ where: { userId: A.userId, note: "параллельно" } })).toBe(
+      1,
+    );
+    // и регулярное правило создано одно, лишние откатились
+    expect(await db.recurringRule.count({ where: { userId: A.userId, note: "параллельно" } })).toBe(
+      1,
+    );
+  });
+
+  it("clientId другого пользователя не мешает и не раскрывает чужую операцию", async () => {
+    const clientId = crypto.randomUUID();
+    current.id = B.userId;
+    const b = await finance.saveTransaction({
+      type: "EXPENSE",
+      amount: "1",
+      categoryId: B.food,
+      walletId: B.walletId,
+      date: today,
+      clientId,
+    });
+    current.id = A.userId;
+    const a = await finance.saveTransaction({
+      type: "EXPENSE",
+      amount: "1",
+      categoryId: A.food,
+      walletId: A.walletId,
+      date: today,
+      clientId,
+    });
+    expect(a.ok && b.ok && a.data.id !== b.data.id).toBe(true);
+  });
+});

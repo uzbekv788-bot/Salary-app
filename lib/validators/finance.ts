@@ -33,6 +33,8 @@ export const transactionSchema = z.object({
     .max(200, "Не длиннее 200 символов")
     .optional()
     .transform((v) => v || null),
+  /** Офлайн-ввод: ID с устройства, повторная отправка не создаёт дубль */
+  clientId: z.uuid().optional(),
 });
 export type TransactionInput = z.input<typeof transactionSchema>;
 

@@ -12,6 +12,7 @@ export function AddTransactionSheet(props: {
   wallets: WalletDTO[];
   today: string;
   currency: string;
+  userId: string;
 }) {
   const { open, setOpen, editing } = useAddTransaction();
   const ready = props.wallets.some((w) => !w.archived) && props.categories.length > 0;
@@ -27,6 +28,7 @@ export function AddTransactionSheet(props: {
           key={`${editing?.id ?? "new"}-${open}`}
           {...props}
           initial={editing}
+          userId={props.userId}
           onDone={() => setOpen(false)}
         />
       ) : (

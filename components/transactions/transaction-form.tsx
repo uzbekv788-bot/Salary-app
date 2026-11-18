@@ -11,6 +11,9 @@ import { Label } from "@/components/ui/label";
 import { NativeSelect } from "@/components/ui/native-select";
 import { Segmented } from "@/components/ui/segmented";
 import { deleteTransaction, restoreTransaction, saveTransaction } from "@/lib/actions/finance";
+import { enqueue, isNetworkError, newClientId } from "@/lib/offline-queue";
+import { formatMoney, parseAmount } from "@/lib/money";
+import type { TransactionInput } from "@/lib/validators/finance";
 import { formatAmountInput, minorToInput } from "@/lib/format-input";
 import { CURRENCIES } from "@/lib/currencies";
 import type { CategoryDTO, TransactionDTO, WalletDTO } from "@/lib/queries/finance";
@@ -42,6 +45,7 @@ export function TransactionForm({
   currency,
   initial,
   onDone,
+  userId,
 }: {
   categories: CategoryDTO[];
   wallets: WalletDTO[];
@@ -49,6 +53,8 @@ export function TransactionForm({
   currency: string;
   initial: TransactionDTO | null;
   onDone: () => void;
+  /** Для офлайн-очереди: чьи это записи */
+  userId?: string;
 }) {
   // Форма рендерится только в браузере (внутри модалки), поэтому localStorage доступен
   const [last] = useState(() => (typeof window === "undefined" ? {} : readLast()));
@@ -89,15 +95,52 @@ export function TransactionForm({
     );
   };
 
+  /** Без сети: проверяем сами и кладём в очередь на устройстве (tasks.md 17.3). */
+  const saveOffline = async (input: TransactionInput & { clientId: string }) => {
+    if (!userId) return setErrors({ form: "Нет сети. Попробуйте ещё раз, когда связь появится." });
+    const minor = parseAmount(amount);
+    if (minor === null || minor <= 0) return setErrors({ amount: "Введите сумму больше нуля" });
+    const cat = categories.find((c) => c.id === categoryId);
+    await enqueue({
+      clientId: input.clientId,
+      userId,
+      input,
+      repeat: repeat || undefined,
+      label: `${cat?.name ?? "Операция"} · ${formatMoney(type === "INCOME" ? minor : -minor, currency, { signed: true })}`,
+    });
+    writeLast({ [type]: categoryId, wallet: walletId });
+    toast.success("Сохранено на устройстве", {
+      description: "Нет сети — отправим автоматически, когда связь появится",
+    });
+    onDone();
+  };
+
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!categoryId) return setErrors({ categoryId: "Выберите категорию" });
+    if (initial && !navigator.onLine)
+      return setErrors({ form: "Без сети можно только добавлять новые операции" });
+    // ID с устройства: если ответ сервера потеряется и запрос уйдёт повторно — дубля не будет
+    const input = {
+      type,
+      amount,
+      categoryId,
+      walletId,
+      date,
+      note,
+      clientId: initial ? undefined : newClientId(),
+    };
     startTransition(async () => {
-      const res = await saveTransaction(
-        { type, amount, categoryId, walletId, date, note },
-        initial?.id,
-        initial ? undefined : repeat || undefined,
-      );
+      if (!initial && !navigator.onLine)
+        return saveOffline(input as typeof input & { clientId: string });
+      let res;
+      try {
+        res = await saveTransaction(input, initial?.id, initial ? undefined : repeat || undefined);
+      } catch (err) {
+        if (!initial && isNetworkError(err))
+          return saveOffline(input as typeof input & { clientId: string });
+        throw err;
+      }
       if (!res.ok) return setErrors(res.fieldErrors ?? { form: res.error });
       writeLast({ [type]: categoryId, wallet: walletId });
       toast.success(
@@ -116,10 +159,13 @@ export function TransactionForm({
       onDone();
     });
   };
-
   const remove = () =>
     startTransition(async () => {
       if (!initial) return;
+      if (!navigator.onLine) {
+        toast.error("Без сети удалить операцию нельзя");
+        return;
+      }
       const res = await deleteTransaction(initial.id);
       if (!res.ok) {
         toast.error(res.error);

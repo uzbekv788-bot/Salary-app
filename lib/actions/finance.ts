@@ -57,7 +57,17 @@ export async function saveTransaction(
   const user = await requireUser();
   const parsed = transactionSchema.safeParse(input);
   if (!parsed.success) return fromZod(parsed.error);
-  const { amount, date, ...rest } = parsed.data;
+  const { amount, date, clientId, ...rest } = parsed.data;
+
+  // Повторная отправка из офлайн-очереди: операция уже сохранена — не создаём дубль
+  if (!id && clientId) {
+    const existing = await db.transaction.findUnique({
+      where: { userId_clientId: { userId: user.id, clientId } },
+      select: { id: true },
+    });
+    if (existing) return ok({ id: existing.id, budget: null });
+  }
+
   const refError = await checkRefs(user.id, rest.categoryId, rest.walletId, rest.type);
   if (refError) return refError;
 
@@ -92,10 +102,24 @@ export async function saveTransaction(
     });
     recurringId = rule.id;
   }
-  const created = await db.transaction.create({
-    data: { ...data, userId: user.id, recurringId },
-    select: { id: true },
-  });
+  let created: { id: string };
+  try {
+    created = await db.transaction.create({
+      data: { ...data, userId: user.id, recurringId, clientId: clientId ?? null },
+      select: { id: true },
+    });
+  } catch (e) {
+    // Две отправки одной офлайн-операции одновременно: вторая упирается в уникальный ключ
+    if (clientId && (e as { code?: string }).code === "P2002") {
+      if (recurringId) await db.recurringRule.delete({ where: { id: recurringId } });
+      const existing = await db.transaction.findUniqueOrThrow({
+        where: { userId_clientId: { userId: user.id, clientId } },
+        select: { id: true },
+      });
+      return ok({ id: existing.id, budget: null });
+    }
+    throw e;
+  }
   refresh();
   return ok({
     id: created.id,

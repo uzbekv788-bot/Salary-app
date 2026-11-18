@@ -23,6 +23,16 @@ export function AddTransactionProvider({ children }: { children: React.ReactNode
   }, []);
   const setOpen = useCallback((v: boolean) => setOpenState(v), []);
 
+  // Ярлык «Добавить операцию» с иконки приложения: /transactions?new=1
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    if (url.searchParams.get("new") !== "1") return;
+    url.searchParams.delete("new");
+    window.history.replaceState(null, "", url);
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- однократное открытие по ссылке-ярлыку
+    openForm();
+  }, [openForm]);
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const k = e.key.toLowerCase();

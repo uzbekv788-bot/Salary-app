@@ -3,6 +3,7 @@ import { PageHeader } from "@/components/layout/page-header";
 import { PageSkeleton } from "@/components/layout/page-skeleton";
 import { DangerZone } from "@/components/settings/danger-zone";
 import { DataSection } from "@/components/settings/data-section";
+import { InstallSection } from "@/components/settings/install-section";
 import { ProfileSection } from "@/components/settings/profile-section";
 import { WalletsSection } from "@/components/settings/wallets-section";
 import { todayIn } from "@/lib/period";
@@ -39,6 +40,7 @@ async function Content() {
         currency={user.currency}
         year={todayIn(user.timezone).slice(0, 4)}
       />
+      <InstallSection />
       <DangerZone email={user.email} />
     </div>
   );
