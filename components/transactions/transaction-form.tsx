@@ -2,7 +2,8 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
-import { Trash2 } from "lucide-react";
+import Link from "next/link";
+import { Repeat, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CategoryIcon } from "@/components/ui/category-icon";
 import { Input } from "@/components/ui/input";
@@ -65,6 +66,7 @@ export function TransactionForm({
   );
   const [date, setDate] = useState(initial?.date ?? today);
   const [note, setNote] = useState(initial?.note ?? "");
+  const [repeat, setRepeat] = useState<"" | "WEEKLY" | "MONTHLY" | "YEARLY">("");
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [pending, startTransition] = useTransition();
   const amountRef = useRef<HTMLInputElement>(null);
@@ -94,11 +96,15 @@ export function TransactionForm({
       const res = await saveTransaction(
         { type, amount, categoryId, walletId, date, note },
         initial?.id,
+        initial ? undefined : repeat || undefined,
       );
       if (!res.ok) return setErrors(res.fieldErrors ?? { form: res.error });
       writeLast({ [type]: categoryId, wallet: walletId });
       toast.success(
         initial ? "Операция изменена" : type === "INCOME" ? "Доход добавлен" : "Расход добавлен",
+        repeat && !initial
+          ? { description: "Будет повторяться автоматически — см. «Регулярные»" }
+          : undefined,
       );
       const b = res.data.budget;
       if (b) {
@@ -245,6 +251,39 @@ export function TransactionForm({
           onChange={(e) => setNote(e.target.value)}
         />
       </div>
+
+      {initial ? (
+        initial.recurringId && (
+          <p className="bg-foreground/5 text-muted-foreground flex items-start gap-2 rounded-sm px-3 py-2 text-[13px]">
+            <Repeat aria-hidden className="mt-0.5 size-4 shrink-0" />
+            <span>
+              Создана регулярным платежом. Изменения коснутся только этой операции —{" "}
+              <Link
+                href="/recurring"
+                className="text-primary font-semibold hover:underline"
+                onClick={onDone}
+              >
+                правило
+              </Link>{" "}
+              останется прежним.
+            </span>
+          </p>
+        )
+      ) : (
+        <div className="grid gap-1.5">
+          <Label htmlFor="tx-repeat">Повторять</Label>
+          <NativeSelect
+            id="tx-repeat"
+            value={repeat}
+            onChange={(e) => setRepeat(e.target.value as typeof repeat)}
+          >
+            <option value="">Не повторять</option>
+            <option value="WEEKLY">Каждую неделю</option>
+            <option value="MONTHLY">Каждый месяц</option>
+            <option value="YEARLY">Каждый год</option>
+          </NativeSelect>
+        </div>
+      )}
 
       {errors.form && (
         <p role="alert" className="bg-expense/10 text-expense rounded-sm px-3 py-2 text-sm">

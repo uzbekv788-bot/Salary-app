@@ -84,6 +84,51 @@ test("регистрация → онбординг → доход и расхо
   expect(text.trim().split("\n")).toHaveLength(4);
 });
 
+test("v1.1: регулярный платёж из формы и цель с пополнением", async ({ page }) => {
+  const email = `e2e-v11-${Date.now()}-${test.info().project.name}@test.dev`;
+  await page.goto("/register");
+  await page.getByLabel("Имя").fill("Тимур");
+  await page.getByLabel("Email").fill(email);
+  await page.getByLabel("Пароль").fill("secret123");
+  await page.getByRole("button", { name: "Создать аккаунт" }).click();
+  await page.getByRole("button", { name: "Далее" }).click();
+  await page.getByRole("button", { name: "Далее" }).click();
+  await page.getByRole("button", { name: "Начать" }).click();
+  await expect(page).toHaveURL(/\/dashboard/);
+
+  // Расход с повторением «каждый месяц»
+  const mobile = (page.viewportSize()?.width ?? 1280) < 768;
+  await page
+    .getByRole("button", { name: mobile ? "Добавить операцию" : "Добавить" })
+    .first()
+    .click();
+  const sheet = page.getByRole("dialog");
+  await sheet.getByLabel("Сумма").fill("399");
+  await sheet.getByRole("radio", { name: "Связь и подписки" }).click();
+  await sheet.getByLabel("Комментарий").fill("Музыка");
+  await sheet.getByLabel("Повторять").selectOption("MONTHLY");
+  await sheet.getByRole("button", { name: "Добавить", exact: true }).click();
+  await expect(sheet).toBeHidden();
+
+  await page.goto("/recurring");
+  await expect(page.getByText("Музыка")).toBeVisible();
+  await expect(page.getByText(/Каждый месяц, \d+-го/)).toBeVisible();
+  await expect(page.getByText("−399 ₽").first()).toBeVisible();
+
+  // Цель: создать и пополнить до конца → поздравление
+  await page.goto("/goals");
+  await page.getByRole("button", { name: "Новая цель" }).click();
+  await page.getByLabel("Название").fill("Наушники");
+  await page.getByLabel("Сколько нужно").fill("10000");
+  await page.getByRole("button", { name: "Создать цель" }).click();
+  await expect(page.getByText("Наушники")).toBeVisible();
+  await page.getByRole("button", { name: "Пополнить / снять" }).click();
+  await page.getByLabel("Сумма").fill("10000");
+  await page.getByRole("button", { name: "Отложить" }).click();
+  await expect(page.getByText(/Цель «Наушники» достигнута/)).toBeVisible();
+  await expect(page.getByText("Достигнутые (1)")).toBeVisible();
+});
+
 test.describe("доступность (axe, WCAG AA)", () => {
   test.beforeEach(async ({ page }) => {
     await page.goto("/login");
@@ -100,6 +145,8 @@ test.describe("доступность (axe, WCAG AA)", () => {
     "/budgets",
     "/categories",
     "/settings",
+    "/recurring",
+    "/goals",
   ]) {
     test(`${path} без серьёзных нарушений`, async ({ page }) => {
       await page.goto(path);

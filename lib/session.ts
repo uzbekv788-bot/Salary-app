@@ -3,6 +3,7 @@ import { cache } from "react";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
+import { materializeRecurring } from "@/lib/recurring-server";
 
 /**
  * Data Access Layer для сессии. Читает cookie запроса, поэтому вызывать
@@ -26,6 +27,8 @@ export async function requireUser({ allowNotOnboarded = false } = {}): Promise<C
   if (!session) redirect("/login");
   const u = session.user;
   if (!u.onboarded && !allowNotOnboarded) redirect("/onboarding");
+  // Регулярные операции, у которых наступила дата, появляются до того, как страница прочитает данные
+  if (u.onboarded) await materializeRecurring(u.id, u.timezone);
   return {
     id: u.id,
     name: u.name,

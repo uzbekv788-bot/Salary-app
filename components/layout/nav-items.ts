@@ -3,6 +3,8 @@ import {
   ChartLine,
   LayoutDashboard,
   PiggyBank,
+  Repeat,
+  Target,
   Settings,
   Tags,
   type LucideIcon,
@@ -16,6 +18,8 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/categories", label: "Категории", icon: Tags },
   { href: "/analytics", label: "Аналитика", icon: ChartLine },
   { href: "/budgets", label: "Бюджеты", icon: PiggyBank },
+  { href: "/recurring", label: "Регулярные", icon: Repeat },
+  { href: "/goals", label: "Цели", icon: Target },
   { href: "/settings", label: "Настройки", icon: Settings },
 ];
 

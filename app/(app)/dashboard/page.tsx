@@ -15,6 +15,8 @@ import { getPeriod } from "@/lib/period-server";
 import { getBudgetsProgress, getByCategory, getKpis, getTrend } from "@/lib/queries/analytics";
 import { Progress } from "@/components/ui/progress";
 import { listTransactions, listWallets } from "@/lib/queries/finance";
+import { listGoals, listRecurring } from "@/lib/queries/planning";
+import { GoalsCard, UpcomingCard } from "@/components/dashboard/planning-widgets";
 
 export const metadata = { title: "Дашборд" };
 const nums = (xs: (number | null)[]) => xs.filter((x): x is number => x !== null);
@@ -36,13 +38,15 @@ async function Content({
   searchParams: PageProps<"/dashboard">["searchParams"];
 }) {
   const { user, period, today } = await getPeriod(searchParams);
-  const [kpis, trend, byCat, recent, wallets, budgets] = await Promise.all([
+  const [kpis, trend, byCat, recent, wallets, budgets, rules, goals] = await Promise.all([
     getKpis(user.id, period),
     getTrend(user.id, period, today),
     getByCategory(user.id, period, "EXPENSE", 5),
     listTransactions(user.id, {}, 6),
     listWallets(user.id),
     getBudgetsProgress(user.id, `${today.slice(0, 7)}-01`),
+    listRecurring(user.id),
+    listGoals(user.id),
   ]);
   const alerts = budgets.filter((b) => b.status !== "ok");
   const cur = user.currency;
@@ -163,6 +167,8 @@ async function Content({
         </Card>
 
         <div className="grid content-start gap-3 sm:gap-5 xl:col-span-4">
+          <UpcomingCard rules={rules} today={today} currency={cur} />
+          <GoalsCard goals={goals} currency={cur} />
           {alerts.length > 0 && (
             <Card>
               <CardHeader>

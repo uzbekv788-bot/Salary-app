@@ -28,6 +28,8 @@ export type TransactionDTO = {
   note: string | null;
   categoryId: string;
   walletId: string;
+  /** Создана регулярным правилом */
+  recurringId: string | null;
   category: { name: string; icon: string; color: string };
   wallet: { name: string };
 };
@@ -139,6 +141,7 @@ export async function listTransactions(userId: string, f: TransactionFilters, li
       note: t.note,
       categoryId: t.categoryId,
       walletId: t.walletId,
+      recurringId: t.recurringId,
       category: t.category,
       wallet: t.wallet,
     })),

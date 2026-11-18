@@ -211,6 +211,77 @@ async function main() {
     ],
   });
 
+  // Регулярные платежи (v1.1): следующее повторение — ближайшая дата после сегодня,
+  // прошлые месяцы уже есть в операциях выше
+  const nextOn = (dayOfMonth: number) => {
+    const thisMonth = new Date(today.getFullYear(), today.getMonth(), dayOfMonth);
+    return day(thisMonth > today ? thisMonth : addMonths(thisMonth, 1));
+  };
+  const rules: { key: string; type: TxType; amount: number; dayOfMonth: number; note: string }[] = [
+    { key: "salary", type: "INCOME", amount: 80_000, dayOfMonth: 10, note: "Аванс" },
+    { key: "salary", type: "INCOME", amount: 105_000, dayOfMonth: 25, note: "Зарплата" },
+    { key: "housing", type: "EXPENSE", amount: 38_000, dayOfMonth: 1, note: "Аренда" },
+    { key: "subs", type: "EXPENSE", amount: 650, dayOfMonth: 5, note: "Мобильная связь" },
+    { key: "subs", type: "EXPENSE", amount: 399, dayOfMonth: 12, note: "Музыка" },
+    { key: "subs", type: "EXPENSE", amount: 599, dayOfMonth: 18, note: "Интернет" },
+  ];
+  await db.recurringRule.createMany({
+    data: rules.map((r) => ({
+      userId,
+      type: r.type,
+      amount: rub(r.amount),
+      categoryId: cats[r.key],
+      walletId: card.id,
+      note: r.note,
+      frequency: "MONTHLY" as const,
+      interval: 1,
+      startDate: nextOn(r.dayOfMonth),
+      nextDate: nextOn(r.dayOfMonth),
+      count: 0,
+    })),
+  });
+
+  // Цели (v1.1): одна в процессе со сроком, одна долгосрочная, одна достигнутая
+  const goal = async (
+    name: string,
+    icon: string,
+    color: string,
+    target: number,
+    deadlineMonths: number | null,
+    contributions: number[],
+    completed = false,
+  ) => {
+    const g = await db.goal.create({
+      data: {
+        userId,
+        name,
+        icon,
+        color,
+        target: rub(target),
+        deadline: deadlineMonths === null ? null : day(addMonths(today, deadlineMonths)),
+        completedAt: completed ? new Date() : null,
+      },
+    });
+    await db.goalContribution.createMany({
+      data: contributions.map((amount, i) => ({
+        goalId: g.id,
+        userId,
+        amount: rub(amount),
+        date: day(subMonths(today, contributions.length - 1 - i)),
+      })),
+    });
+  };
+  await goal("Отпуск в Грузии", "Plane", "sky", 150_000, 6, [20_000, 15_000, 15_000, 10_000]);
+  await goal(
+    "Подушка безопасности",
+    "Umbrella",
+    "emerald",
+    300_000,
+    12,
+    [100_000, 50_000, 30_000, 30_000],
+  );
+  await goal("Новый ноутбук", "Laptop", "violet", 120_000, null, [40_000, 40_000, 40_000], true);
+
   console.log(
     `✔ Демо-пользователь ${DEMO_EMAIL} / ${DEMO_PASSWORD}: ${rows.length} операций с ${day(start).toISOString().slice(0, 10)} по ${day(addDays(today, 0)).toISOString().slice(0, 10)}`,
   );

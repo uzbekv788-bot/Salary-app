@@ -8,6 +8,8 @@ const APP_ROUTES = [
   "/analytics",
   "/budgets",
   "/settings",
+  "/recurring",
+  "/goals",
   "/onboarding",
 ];
 const GUEST_ROUTES = ["/login", "/register"];

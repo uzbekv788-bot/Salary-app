@@ -15,6 +15,7 @@ import {
   type WalletInput,
 } from "@/lib/validators/finance";
 import { getBudgetsProgress, type BudgetProgress } from "@/lib/queries/analytics";
+import { occurrence } from "@/lib/recurring";
 
 const refresh = () => revalidatePath("/", "layout");
 
@@ -50,6 +51,8 @@ async function budgetAfter(userId: string, type: string, categoryId: string, dat
 export async function saveTransaction(
   input: TransactionInput,
   id?: string,
+  /** Только для новой операции: сделать её первым повторением регулярного правила */
+  repeat?: "WEEKLY" | "MONTHLY" | "YEARLY",
 ): Promise<ActionResult<SavedTx>> {
   const user = await requireUser();
   const parsed = transactionSchema.safeParse(input);
@@ -68,8 +71,29 @@ export async function saveTransaction(
     refresh();
     return ok({ id, budget: await budgetAfter(user.id, rest.type, rest.categoryId, date) });
   }
+  let recurringId: string | null = null;
+  if (repeat && ["WEEKLY", "MONTHLY", "YEARLY"].includes(repeat)) {
+    const rule = await db.recurringRule.create({
+      data: {
+        userId: user.id,
+        type: rest.type,
+        amount: data.amount,
+        categoryId: rest.categoryId,
+        walletId: rest.walletId,
+        note: rest.note,
+        frequency: repeat,
+        interval: 1,
+        startDate: data.date,
+        // Эта операция — повторение №0, следующее считается от той же даты
+        count: 1,
+        nextDate: fromDateStr(occurrence(date, repeat, 1, 1)),
+      },
+      select: { id: true },
+    });
+    recurringId = rule.id;
+  }
   const created = await db.transaction.create({
-    data: { ...data, userId: user.id },
+    data: { ...data, userId: user.id, recurringId },
     select: { id: true },
   });
   refresh();
@@ -174,17 +198,26 @@ export async function deleteCategory(
     select: { type: true },
   });
   if (!category) return fail("Категория не найдена");
-  const used = await db.transaction.count({ where: { categoryId: id } });
+  // Регулярные правила тоже «используют» категорию: без переноса они удалились бы молча
+  const [txCount, ruleCount] = await Promise.all([
+    db.transaction.count({ where: { categoryId: id } }),
+    db.recurringRule.count({ where: { categoryId: id } }),
+  ]);
+  const used = txCount + ruleCount;
 
   if (used > 0) {
     if (!moveToId || moveToId === id)
-      return fail("В категории есть операции — выберите, куда их перенести");
+      return fail("В категории есть операции или регулярные платежи — выберите, куда их перенести");
     const target = await db.category.findFirst({
       where: { id: moveToId, userId: user.id, type: category.type },
     });
     if (!target) return fail("Категория для переноса не найдена");
     await db.$transaction([
       db.transaction.updateMany({
+        where: { categoryId: id, userId: user.id },
+        data: { categoryId: moveToId },
+      }),
+      db.recurringRule.updateMany({
         where: { categoryId: id, userId: user.id },
         data: { categoryId: moveToId },
       }),

@@ -1,5 +1,6 @@
 "use client";
 
+import { Repeat } from "lucide-react";
 import { CategoryIcon } from "@/components/ui/category-icon";
 import { useAddTransaction } from "@/components/transactions/add-transaction-provider";
 import { formatMoney } from "@/lib/money";
@@ -27,7 +28,15 @@ export function TransactionRow({
       >
         <CategoryIcon icon={tx.category.icon} color={tx.category.color} />
         <span className="min-w-0 flex-1">
-          <span className="block truncate text-[15px] font-semibold">{tx.category.name}</span>
+          <span className="flex items-center gap-1.5 text-[15px] font-semibold">
+            <span className="truncate">{tx.category.name}</span>
+            {tx.recurringId && (
+              <Repeat
+                className="text-muted-foreground size-3.5 shrink-0"
+                aria-label="Регулярный платёж"
+              />
+            )}
+          </span>
           <span className="text-muted-foreground block truncate text-[13px]">
             {[tx.note, meta].filter(Boolean).join(" · ") || " "}
           </span>

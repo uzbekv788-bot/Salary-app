@@ -15,3 +15,9 @@ export function dayLabel(date: string, today: string): string {
 }
 
 export const shortDate = (date: string) => format(parseDate(date)!, "d MMM", { locale: ru });
+
+/** "18 нояб." для текущего года, "18 нояб. 2027" — для другого. */
+export const dateWithYear = (date: string, today: string) =>
+  format(parseDate(date)!, date.slice(0, 4) === today.slice(0, 4) ? "d MMM" : "d MMM yyyy", {
+    locale: ru,
+  });

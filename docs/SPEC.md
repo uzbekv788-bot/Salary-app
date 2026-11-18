@@ -339,3 +339,46 @@ CI (GitHub Actions): `lint → typecheck → unit → build → e2e` на каж
 | Динамика по дням — нарастающим итогом           | Дневные суммы «пиковые» (зарплата 2 раза в месяц); накопленные линии читаются лучше.                                                                                                    |
 | Цвета графиков отделены от цветов текста        | Пара доход/расход проверена `validate_palette.js` на различимость при дейтеранопии (см. design.md §2.1).                                                                                |
 | Донат: максимум 5 сегментов + легенда-список    | Цвета категорий выбирает пользователь, 8 цветов нельзя сделать попарно различимыми — смысл дублируется иконкой и подписью.                                                              |
+
+---
+
+## 15. v1.1: регулярные операции и цели
+
+### Модель данных
+
+```prisma
+enum Frequency { WEEKLY MONTHLY YEARLY }
+
+model RecurringRule {            // «зарплата каждый месяц 10-го»
+  type TxType; amount BigInt; categoryId; walletId; note?
+  frequency Frequency; interval Int @default(1)   // каждые N недель/месяцев/лет
+  startDate @db.Date; endDate? @db.Date
+  count Int       // сколько повторений создано = номер следующего
+  nextDate @db.Date  // = occurrence(startDate, count)
+  active Boolean
+}
+// Transaction.recurringId → RecurringRule (onDelete: SetNull — история остаётся)
+
+model Goal { name; icon; color; target BigInt; deadline? @db.Date; completedAt? }
+model GoalContribution { goalId; amount BigInt (> 0 пополнение, < 0 снятие); date; note? }
+```
+
+### Создание операций по правилам
+
+- `lib/recurring.ts` — чистые функции: `occurrence(start, freq, interval, k)` считает k-ю дату **от даты начала** (31 янв → 28 фев → 31 мар), `dueOccurrences` — какие даты пора создать (не больше 400 за проход).
+- `lib/recurring-server.ts` → `materializeRecurring(userId, tz)` вызывается из `requireUser()` один раз за запрос (React `cache`). Отдельный cron не нужен: пропущенные даты досоздаются при следующем визите.
+- Защита от дублей: в транзакции `UPDATE recurring_rule SET count = новое … WHERE id = ? AND count = старое`; операции создаются, только если строка обновилась. Параллельный запрос получает 0 строк.
+- Пауза: `active = false`. При возобновлении пропущенные даты **не** создаются — `nextDate` переносится на ближайшую дату ≥ сегодня.
+- Изменение расписания (частота, интервал, следующая дата) переякоривает правило: `startDate = nextDate`, `count = 0`. Уже созданные операции не меняются.
+- Категорию с правилами нельзя удалить без переноса (правила переезжают вместе с операциями).
+
+### Маршруты и действия
+
+| Путь         | Содержимое                                                                             |
+| ------------ | -------------------------------------------------------------------------------------- |
+| `/recurring` | Сводка «в месяц приходит/уходит» (`monthlyEquivalent`), список правил, пауза, удаление |
+| `/goals`     | Цели с прогрессом, «≈ N ₽ в месяц» (`lib/goals.ts → monthlyNeeded`), пополнения/снятия |
+
+Server Actions (`lib/actions/planning.ts`): `saveRecurring`, `setRecurringActive`, `deleteRecurring`, `saveGoal`, `deleteGoal`, `addContribution` (возвращает `justCompleted` для поздравления; снять больше накопленного нельзя). `saveTransaction(input, id?, repeat?)` — новая операция с `repeat` становится повторением №0 нового правила.
+
+Тесты: `tests/unit/recurring.test.ts`, `tests/integration/planning.test.ts` (параллельные запросы без дублей, пауза, перенос категории, цели, изоляция), e2e «v1.1» + axe для `/recurring` и `/goals`.
