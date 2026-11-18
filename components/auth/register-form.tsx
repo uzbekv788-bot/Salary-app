@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useLocaleRouter } from "@/components/i18n/use-locale-router";
+import { useI18n } from "@/components/i18n/locale-provider";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
@@ -11,7 +12,8 @@ import { authClient, authErrorMessage } from "@/lib/auth-client";
 import { registerSchema, type RegisterInput } from "@/lib/validators/auth";
 
 export function RegisterForm({ googleEnabled }: { googleEnabled: boolean }) {
-  const router = useRouter();
+  const router = useLocaleRouter();
+  const { t } = useI18n();
   const [formError, setFormError] = useState<string | null>(null);
   const {
     register,
@@ -32,15 +34,15 @@ export function RegisterForm({ googleEnabled }: { googleEnabled: boolean }) {
       <form onSubmit={onSubmit} noValidate className="grid gap-4">
         <FormField
           id="name"
-          label="Имя"
+          label={t("auth.name")}
           autoComplete="given-name"
-          placeholder="Анна"
+          placeholder={t("auth.namePlaceholder")}
           error={errors.name?.message}
           {...register("name")}
         />
         <FormField
           id="email"
-          label="Email"
+          label={t("auth.email")}
           type="email"
           autoComplete="email"
           placeholder="you@example.com"
@@ -49,20 +51,20 @@ export function RegisterForm({ googleEnabled }: { googleEnabled: boolean }) {
         />
         <FormField
           id="password"
-          label="Пароль"
+          label={t("auth.password")}
           type="password"
           autoComplete="new-password"
-          placeholder="Минимум 8 символов"
+          placeholder={t("auth.passwordPlaceholder")}
           error={errors.password?.message}
           {...register("password")}
         />
         {formError && (
           <p role="alert" className="bg-expense/10 text-expense rounded-sm px-3 py-2 text-sm">
-            {formError}
+            {t.dyn(formError)}
           </p>
         )}
         <Button type="submit" className="mt-1 w-full" disabled={isSubmitting}>
-          {isSubmitting ? "Создаём аккаунт…" : "Создать аккаунт"}
+          {isSubmitting ? t("auth.creating") : t("auth.createAccount")}
         </Button>
       </form>
       {googleEnabled && <GoogleButton callbackURL="/onboarding" />}

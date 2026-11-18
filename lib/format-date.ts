@@ -1,23 +1,16 @@
 import { format } from "date-fns";
-import { ru } from "date-fns/locale";
+import type { Format } from "@/lib/i18n/format";
 import { parseDate } from "@/lib/period";
 
-/** "Сегодня" / "Вчера" / "12 ноября, среда" */
-export function dayLabel(date: string, today: string): string {
-  if (date === today) return "Сегодня";
+/** «Сегодня» / «Вчера» / «12 ноября, среда» — на языке интерфейса. */
+export function dayLabel(
+  date: string,
+  today: string,
+  { fmt, todayLabel, yesterdayLabel }: { fmt: Format; todayLabel: string; yesterdayLabel: string },
+): string {
+  if (date === today) return todayLabel;
   const t = parseDate(today)!;
   const y = new Date(t.getFullYear(), t.getMonth(), t.getDate() - 1);
-  if (date === format(y, "yyyy-MM-dd")) return "Вчера";
-  const d = parseDate(date)!;
-  return format(d, d.getFullYear() === t.getFullYear() ? "d MMMM, EEEE" : "d MMMM yyyy, EEEE", {
-    locale: ru,
-  });
+  if (date === format(y, "yyyy-MM-dd")) return yesterdayLabel;
+  return fmt.long(date, date.slice(0, 4) !== today.slice(0, 4));
 }
-
-export const shortDate = (date: string) => format(parseDate(date)!, "d MMM", { locale: ru });
-
-/** "18 нояб." для текущего года, "18 нояб. 2027" — для другого. */
-export const dateWithYear = (date: string, today: string) =>
-  format(parseDate(date)!, date.slice(0, 4) === today.slice(0, 4) ? "d MMM" : "d MMM yyyy", {
-    locale: ru,
-  });

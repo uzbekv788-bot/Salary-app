@@ -170,6 +170,55 @@ test("v1.1: расход без сети сохраняется на устро�
   await expect(page.getByText(/на устройстве/)).toBeHidden();
 });
 
+test.describe("языки", () => {
+  // Браузер с английским языком (Accept-Language) сам попадает на /en
+  test.use({ locale: "en-US" });
+
+  test("английский интерфейс, категории на языке пользователя, переключение на узбекский", async ({
+    page,
+  }) => {
+    await page.goto("/register");
+    await expect(page).toHaveURL(/\/en\/register/);
+    await expect(page.locator("html")).toHaveAttribute("lang", "en");
+    await page.getByLabel("Name").fill("Tim");
+    await page
+      .getByLabel("Email")
+      .fill(`e2e-en-${Date.now()}-${test.info().project.name}@test.dev`);
+    await page.getByLabel("Password").fill("secret123");
+    await page.getByRole("button", { name: "Create account" }).click();
+    await expect(page.getByRole("heading", { name: /Hi, Tim/ })).toBeVisible();
+    await page.getByRole("button", { name: "Next", exact: true }).click();
+    await expect(page.getByText("Groceries")).toBeVisible(); // стандартные категории — по-английски
+    await page.getByRole("button", { name: "Next", exact: true }).click();
+    await page.getByRole("button", { name: "Start", exact: true }).click();
+    await expect(page).toHaveURL(/\/en\/dashboard/);
+    await expect(page.getByRole("heading", { name: "Dashboard" })).toBeVisible();
+
+    const mobile = (page.viewportSize()?.width ?? 1280) < 768;
+    await page
+      .getByRole("button", { name: mobile ? "Add transaction" : "Add" })
+      .first()
+      .click();
+    const sheet = page.getByRole("dialog");
+    await expect(sheet.getByText("New transaction")).toBeVisible();
+    await sheet.getByLabel("Amount").fill("1250");
+    await sheet.getByRole("radio", { name: "Groceries" }).click();
+    await sheet.getByRole("button", { name: "Add", exact: true }).click();
+    await expect(page.getByText("Expense added")).toBeVisible();
+    await expect(page.getByLabel(/^Expenses: RUB\s?1,250/)).toBeVisible();
+
+    // Переключение языка в настройках сохраняет экран
+    await page.goto("/en/settings");
+    await page.getByRole("combobox", { name: "Language" }).first().selectOption("uz");
+    await expect(page).toHaveURL(/\/uz\/settings/);
+    await expect(page.getByRole("heading", { name: "Sozlamalar" })).toBeVisible();
+    // Выбор запоминается: адрес без префикса ведёт на узбекскую версию
+    await page.goto("/transactions");
+    await expect(page).toHaveURL(/\/uz\/transactions/);
+    await expect(page.getByRole("heading", { name: "Operatsiyalar" })).toBeVisible();
+  });
+});
+
 test.describe("доступность (axe, WCAG AA)", () => {
   test.beforeEach(async ({ page }) => {
     await page.goto("/login");

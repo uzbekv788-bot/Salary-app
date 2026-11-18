@@ -76,16 +76,16 @@ const EXPENSE_WORDS = /^(expense|расход|списание|покупка|о
 export function mapRow(
   row: Record<string, string>,
   map: ImportMapping,
-): { ok: true; row: ImportRow } | { ok: false; error: string } {
+): { ok: true; row: ImportRow } | { ok: false; error: string; value: string } {
   const date = parseCsvDate(row[map.date] ?? "");
-  if (!date) return { ok: false, error: `Не распознана дата «${row[map.date] ?? ""}»` };
+  if (!date) return { ok: false, error: "err.csvDate", value: row[map.date] ?? "" };
   const rawAmount = (row[map.amount] ?? "")
     .replace(/[^\d,.\-−+\s]/g, "")
     .replace("−", "-")
     .trim();
   const minor = parseAmount(rawAmount.replace(/^\+/, ""));
   if (minor === null || minor === 0)
-    return { ok: false, error: `Не распознана сумма «${row[map.amount] ?? ""}»` };
+    return { ok: false, error: "err.csvAmount", value: row[map.amount] ?? "" };
   let type: ImportRow["type"] = minor < 0 ? "EXPENSE" : "INCOME";
   const t = map.type ? (row[map.type] ?? "").trim() : "";
   if (INCOME_WORDS.test(t)) type = "INCOME";

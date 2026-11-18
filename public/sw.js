@@ -1,8 +1,10 @@
 /* Service worker Salary (tasks.md 17.2). Без сборщика — обычный JS, отдаётся как есть. */
-const VERSION = "v2";
+const VERSION = "v3";
 const STATIC = `salary-static-${VERSION}`;
 const PAGES = `salary-pages-${VERSION}`;
-const OFFLINE_URL = "/offline";
+const OFFLINE_URLS = { ru: "/offline", en: "/en/offline", uz: "/uz/offline" };
+/** Запасная страница на языке адреса: /en/… → /en/offline */
+const offlineFor = (pathname) => OFFLINE_URLS[pathname.split("/")[1]] || OFFLINE_URLS.ru;
 
 /**
  * Страница без своих JS/CSS не оживёт офлайн. Находим в HTML (включая данные RSC внутри)
@@ -29,9 +31,11 @@ self.addEventListener("install", (event) => {
     (async () => {
       const cache = await caches.open(STATIC);
       await cache.addAll(["/icons/icon-192.png"]);
-      const res = await fetch(OFFLINE_URL);
-      await cache.put(OFFLINE_URL, res.clone());
-      await cacheAssetsFrom(await res.text());
+      for (const url of Object.values(OFFLINE_URLS)) {
+        const res = await fetch(url);
+        await cache.put(url, res.clone());
+        await cacheAssetsFrom(await res.text());
+      }
       await self.skipWaiting();
     })(),
   );
@@ -103,7 +107,7 @@ self.addEventListener("fetch", (event) => {
           return (
             (await pages.match(req.url.split("#")[0])) ||
             (await pages.match(new URL(url.pathname, url.origin).href)) ||
-            (await caches.match(OFFLINE_URL))
+            (await caches.match(offlineFor(url.pathname)))
           );
         }),
     );

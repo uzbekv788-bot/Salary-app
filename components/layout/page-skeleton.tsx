@@ -1,10 +1,14 @@
+"use client";
+
 import { Card } from "@/components/ui/card";
+import { useI18n } from "@/components/i18n/locale-provider";
 import { Skeleton } from "@/components/ui/skeleton";
 
 /** Скелетон контента страницы (tasks.md 5.5): вместо белого экрана при загрузке. */
 export function PageSkeleton({ kpis = false }: { kpis?: boolean }) {
+  const { t } = useI18n();
   return (
-    <div className="grid gap-5" aria-busy="true" aria-label="Загрузка">
+    <div className="grid gap-5" aria-busy="true" aria-label={t("common.loading")}>
       {kpis && (
         <div className="grid gap-3 sm:grid-cols-2 sm:gap-5 xl:grid-cols-4">
           {Array.from({ length: 4 }, (_, i) => (

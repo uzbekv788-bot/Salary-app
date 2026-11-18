@@ -16,6 +16,7 @@ import {
 import type { CategoryDTO } from "@/lib/queries/finance";
 import { cn } from "@/lib/utils";
 import { useDesktopAutoFocus } from "@/lib/hooks/use-desktop-autofocus";
+import { useI18n } from "@/components/i18n/locale-provider";
 
 /** Создание/редактирование категории с предпросмотром (tasks.md 7.3). */
 export function CategoryForm({
@@ -27,6 +28,7 @@ export function CategoryForm({
   initial: CategoryDTO | null;
   onDone: () => void;
 }) {
+  const { t } = useI18n();
   const [name, setName] = useState(initial?.name ?? "");
   const focusRef = useDesktopAutoFocus<HTMLInputElement>();
   const [icon, setIcon] = useState(initial?.icon ?? "ShoppingBag");
@@ -45,7 +47,7 @@ export function CategoryForm({
         setErrors(res.fieldErrors ?? { form: res.error });
         return;
       }
-      toast.success(initial ? "Категория изменена" : "Категория создана");
+      toast.success(initial ? t("cat.edited") : t("cat.created"));
       onDone();
     });
   };
@@ -54,10 +56,10 @@ export function CategoryForm({
     <form onSubmit={submit} noValidate className="grid gap-4">
       <div className="bg-foreground/4 flex items-center gap-3 rounded-md p-3">
         <CategoryIcon icon={icon} color={color} />
-        <span className="font-semibold">{name || "Название категории"}</span>
+        <span className="font-semibold">{name || t("cat.namePlaceholder")}</span>
       </div>
       <div className="grid gap-1.5">
-        <Label htmlFor="cat-name">Название</Label>
+        <Label htmlFor="cat-name">{t("common.name")}</Label>
         <Input
           id="cat-name"
           value={name}
@@ -66,11 +68,13 @@ export function CategoryForm({
           aria-invalid={Boolean(errors.name)}
           ref={focusRef}
         />
-        {errors.name && <p className="text-expense text-[13px]">{errors.name}</p>}
+        {errors.name && <p className="text-expense text-[13px]">{t.dyn(errors.name)}</p>}
       </div>
       <fieldset>
-        <legend className="text-muted-foreground mb-2 text-[13px] font-medium">Цвет</legend>
-        <div role="radiogroup" aria-label="Цвет" className="flex flex-wrap gap-2">
+        <legend className="text-muted-foreground mb-2 text-[13px] font-medium">
+          {t("cat.color")}
+        </legend>
+        <div role="radiogroup" aria-label={t("cat.color")} className="flex flex-wrap gap-2">
           {CATEGORY_COLORS.map((c) => (
             <button
               key={c}
@@ -89,10 +93,12 @@ export function CategoryForm({
         </div>
       </fieldset>
       <fieldset>
-        <legend className="text-muted-foreground mb-2 text-[13px] font-medium">Иконка</legend>
+        <legend className="text-muted-foreground mb-2 text-[13px] font-medium">
+          {t("cat.icon")}
+        </legend>
         <div
           role="radiogroup"
-          aria-label="Иконка"
+          aria-label={t("cat.icon")}
           className="grid max-h-48 grid-cols-7 gap-1 overflow-y-auto p-0.5 sm:grid-cols-9"
         >
           {Object.keys(CATEGORY_ICONS).map((name) => (
@@ -115,11 +121,11 @@ export function CategoryForm({
       </fieldset>
       {errors.form && (
         <p role="alert" className="bg-expense/10 text-expense rounded-sm px-3 py-2 text-sm">
-          {errors.form}
+          {t.dyn(errors.form)}
         </p>
       )}
       <Button type="submit" disabled={pending}>
-        {pending ? "Сохраняем…" : initial ? "Сохранить" : "Создать"}
+        {pending ? t("common.saving") : initial ? t("common.save") : t("common.create")}
       </Button>
     </form>
   );

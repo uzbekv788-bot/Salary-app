@@ -10,18 +10,21 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
-export type NavItem = { href: string; label: string; icon: LucideIcon };
+import type { TKey } from "@/lib/i18n/core";
+
+export type NavItem = { href: string; label: TKey; icon: LucideIcon };
 
 export const NAV_ITEMS: NavItem[] = [
-  { href: "/dashboard", label: "Дашборд", icon: LayoutDashboard },
-  { href: "/transactions", label: "Операции", icon: ArrowLeftRight },
-  { href: "/categories", label: "Категории", icon: Tags },
-  { href: "/analytics", label: "Аналитика", icon: ChartLine },
-  { href: "/budgets", label: "Бюджеты", icon: PiggyBank },
-  { href: "/recurring", label: "Регулярные", icon: Repeat },
-  { href: "/goals", label: "Цели", icon: Target },
-  { href: "/settings", label: "Настройки", icon: Settings },
+  { href: "/dashboard", label: "nav.dashboard", icon: LayoutDashboard },
+  { href: "/transactions", label: "nav.transactions", icon: ArrowLeftRight },
+  { href: "/categories", label: "nav.categories", icon: Tags },
+  { href: "/analytics", label: "nav.analytics", icon: ChartLine },
+  { href: "/budgets", label: "nav.budgets", icon: PiggyBank },
+  { href: "/recurring", label: "nav.recurring", icon: Repeat },
+  { href: "/goals", label: "nav.goals", icon: Target },
+  { href: "/settings", label: "nav.settings", icon: Settings },
 ];
 
+/** pathname — адрес в браузере (с префиксом языка), href — уже локализованный путь */
 export const isActive = (pathname: string, href: string) =>
   pathname === href || pathname.startsWith(href + "/");

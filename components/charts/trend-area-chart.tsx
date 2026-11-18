@@ -12,7 +12,7 @@ import {
 } from "recharts";
 import { ChartTooltipBox } from "@/components/charts/chart-tooltip";
 import { Segmented } from "@/components/ui/segmented";
-import { formatCompact, formatMoney } from "@/lib/money";
+import { useI18n } from "@/components/i18n/locale-provider";
 import { useMediaQuery } from "@/lib/hooks/use-media-query";
 import { CHART_VARS, useCssVars } from "@/lib/hooks/use-css-vars";
 import type { TrendPoint } from "@/lib/queries/analytics";
@@ -34,7 +34,8 @@ export function TrendAreaChart({
   const [mode, setMode] = useState<Mode>("flow");
   const reduced = useMediaQuery("(prefers-reduced-motion: reduce)");
   const mobile = useMediaQuery("(max-width: 639px)");
-  const money = (v: number) => formatMoney(v, currency);
+  const { t, fmt } = useI18n();
+  const money = (v: number) => fmt.money(v, currency);
   // По дням суммы «пиковые» (зарплата раз в две недели), поэтому показываем нарастающий итог —
   // линии плавные, и видно, обгоняют ли расходы доходы к концу периода.
   const data = useMemo(() => {
@@ -53,28 +54,28 @@ export function TrendAreaChart({
   const series =
     mode === "flow"
       ? ([
-          { key: "income", label: "Доходы", color: C.income },
-          { key: "expense", label: "Расходы", color: C.expense },
+          { key: "income", label: t("common.income"), color: C.income },
+          { key: "expense", label: t("common.expense"), color: C.expense },
         ] as const)
-      : ([{ key: "balance", label: "Баланс", color: C.balance }] as const);
+      : ([{ key: "balance", label: t("common.balance"), color: C.balance }] as const);
 
   return (
     <div>
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <Segmented
-          label="Что показать"
+          label={t("chart.whatToShow")}
           className="w-auto"
           value={mode}
           onChange={setMode}
           options={[
-            { value: "flow", label: "Доходы и расходы" },
-            { value: "balance", label: "Баланс" },
+            { value: "flow", label: t("chart.flow") },
+            { value: "balance", label: t("common.balance") },
           ]}
         />
         {/* Легенда: при двух сериях обязательна — цвет не единственный носитель смысла */}
         {mode === "flow" && (
           <ul className="text-muted-foreground flex flex-wrap gap-x-4 gap-y-1 text-[13px]">
-            {cumulative && <li>Нарастающим итогом</li>}
+            {cumulative && <li>{t("chart.cumulative")}</li>}
             {series.map((s) => (
               <li key={s.key} className="flex items-center gap-1.5">
                 <span
@@ -120,7 +121,7 @@ export function TrendAreaChart({
               tickLine={false}
               axisLine={false}
               width={mobile ? 52 : 64}
-              tickFormatter={(v: number) => formatCompact(v)}
+              tickFormatter={(v: number) => fmt.compact(v)}
               tick={{ fill: v["muted-foreground"], fontSize: 12 }}
             />
             <Tooltip
@@ -133,18 +134,20 @@ export function TrendAreaChart({
                   <ChartTooltipBox
                     title={p.label}
                     rows={[
-                      { color: C.income, label: "Доходы", value: money(p.income) },
-                      { color: C.expense, label: "Расходы", value: money(p.expense) },
+                      { color: C.income, label: t("common.income"), value: money(p.income) },
+                      { color: C.expense, label: t("common.expense"), value: money(p.expense) },
                     ]}
                     footer={{
-                      label: cumulative ? "Разница с начала периода" : "Разница",
-                      value: formatMoney(p.income - p.expense, currency, { signed: true }),
+                      label: cumulative ? t("chart.diffSince") : t("common.difference"),
+                      value: fmt.money(p.income - p.expense, currency, { signed: true }),
                     }}
                   />
                 ) : (
                   <ChartTooltipBox
                     title={p.label}
-                    rows={[{ color: C.balance, label: "Баланс", value: money(p.balance) }]}
+                    rows={[
+                      { color: C.balance, label: t("common.balance"), value: money(p.balance) },
+                    ]}
                   />
                 );
               }}
@@ -170,16 +173,16 @@ export function TrendAreaChart({
 
       <details className="mt-3 text-sm">
         <summary className="text-muted-foreground cursor-pointer text-[13px] font-medium">
-          Показать таблицей
+          {t("common.showTable")}
         </summary>
         <div className="mt-2 max-h-64 overflow-auto">
           <table className="num w-full text-left text-[13px]">
             <thead className="text-muted-foreground">
               <tr>
-                <th className="py-1 font-medium">Период</th>
-                <th className="py-1 text-right font-medium">Доходы</th>
-                <th className="py-1 text-right font-medium">Расходы</th>
-                <th className="py-1 text-right font-medium">Баланс</th>
+                <th className="py-1 font-medium">{t("common.period")}</th>
+                <th className="py-1 text-right font-medium">{t("common.income")}</th>
+                <th className="py-1 text-right font-medium">{t("common.expense")}</th>
+                <th className="py-1 text-right font-medium">{t("common.balance")}</th>
               </tr>
             </thead>
             <tbody>

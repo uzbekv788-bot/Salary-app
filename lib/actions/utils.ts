@@ -14,7 +14,7 @@ export const fail = (error: string, fieldErrors?: Record<string, string>): Actio
 export function fromZod(error: z.ZodError): ActionResult<never> {
   const fieldErrors: Record<string, string> = {};
   for (const issue of error.issues) fieldErrors[issue.path.join(".")] ??= issue.message;
-  return fail("Проверьте введённые данные", fieldErrors);
+  return fail("err.checkInput", fieldErrors);
 }
 
 /** Prisma @db.Date → "YYYY-MM-DD" и обратно (UTC-полночь, без сдвига дня). */

@@ -3,13 +3,15 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { authClient } from "@/lib/auth-client";
+import { useI18n } from "@/components/i18n/locale-provider";
 
 export function GoogleButton({ callbackURL }: { callbackURL: string }) {
   const [pending, setPending] = useState(false);
+  const { t, href } = useI18n();
   return (
     <>
       <div className="text-muted-foreground my-5 flex items-center gap-3 text-[13px]">
-        <span className="bg-foreground/10 h-px flex-1" /> или{" "}
+        <span className="bg-foreground/10 h-px flex-1" /> {t("auth.or")}{" "}
         <span className="bg-foreground/10 h-px flex-1" />
       </div>
       <Button
@@ -19,7 +21,7 @@ export function GoogleButton({ callbackURL }: { callbackURL: string }) {
         disabled={pending}
         onClick={async () => {
           setPending(true);
-          await authClient.signIn.social({ provider: "google", callbackURL });
+          await authClient.signIn.social({ provider: "google", callbackURL: href(callbackURL) });
         }}
       >
         <svg viewBox="0 0 24 24" aria-hidden className="size-5">
@@ -40,7 +42,7 @@ export function GoogleButton({ callbackURL }: { callbackURL: string }) {
             d="M12 5.4c1.6 0 3.1.6 4.2 1.7l3.2-3.2A11 11 0 0 0 2 7.1L5.7 10C6.6 7.4 9 5.4 12 5.4Z"
           />
         </svg>
-        Войти через Google
+        {t("auth.google")}
       </Button>
     </>
   );

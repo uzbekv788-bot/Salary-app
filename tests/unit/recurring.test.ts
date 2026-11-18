@@ -125,3 +125,17 @@ describe("upcomingOccurrences", () => {
     ]);
   });
 });
+
+describe("describeSchedule на других языках", () => {
+  it("английский и узбекский", () => {
+    expect(describeSchedule("2026-11-10", "MONTHLY", 1, "en")).toBe("Every month on the 10th");
+    expect(describeSchedule("2026-01-31", "MONTHLY", 1, "en")).toBe(
+      "Every month on the 31st (or the last day of the month)",
+    );
+    expect(describeSchedule("2026-11-13", "WEEKLY", 2, "en")).toBe("Every 2 weeks on Fridays");
+    expect(describeSchedule("2026-03-01", "YEARLY", 1, "en")).toBe("Every year on March 1");
+    expect(describeSchedule("2026-11-10", "MONTHLY", 1, "uz")).toBe("Har oy, 10-sanada");
+    expect(describeSchedule("2026-11-13", "WEEKLY", 1, "uz")).toBe("Har hafta, juma kunlari");
+    expect(describeSchedule("2026-03-01", "YEARLY", 1, "uz")).toBe("Har yili, 1-mart");
+  });
+});

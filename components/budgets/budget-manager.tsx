@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import Link from "next/link";
+import Link from "@/components/i18n/link";
 import { toast } from "sonner";
 import {
   ChevronLeft,
@@ -25,16 +25,17 @@ import { Progress } from "@/components/ui/progress";
 import { ResponsiveSheet } from "@/components/ui/responsive-sheet";
 import { copyBudgetsFromPrevious, deleteBudget, upsertBudget } from "@/lib/actions/finance";
 import { formatAmountInput, minorToInput } from "@/lib/format-input";
-import { formatMoney } from "@/lib/money";
+import { rich } from "@/components/i18n/rich";
 import type { BudgetProgress } from "@/lib/queries/analytics";
 import type { CategoryDTO } from "@/lib/queries/finance";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/components/i18n/locale-provider";
 import { useDesktopAutoFocus } from "@/lib/hooks/use-desktop-autofocus";
 
 const STATUS = {
-  ok: { tone: "primary", icon: CircleCheck, text: "В пределах лимита", cls: "text-income" },
-  warning: { tone: "warning", icon: TriangleAlert, text: "Почти исчерпан", cls: "text-warning" },
-  over: { tone: "expense", icon: OctagonAlert, text: "Превышен", cls: "text-expense" },
+  ok: { tone: "primary", icon: CircleCheck, text: "budget.ok", cls: "text-income" },
+  warning: { tone: "warning", icon: TriangleAlert, text: "budget.warning", cls: "text-warning" },
+  over: { tone: "expense", icon: OctagonAlert, text: "budget.over", cls: "text-expense" },
 } as const;
 
 /** Бюджеты месяца (tasks.md 11.2): прогресс, «осталось N на M дней», статус — иконка + текст, не только цвет. */
@@ -48,6 +49,7 @@ export function BudgetManager(props: {
   nextMonth: string | null;
   currency: string;
 }) {
+  const { t, fmt } = useI18n();
   const { budgets, categories, month, currency } = props;
   const [editing, setEditing] = useState<BudgetProgress | null>(null);
   const [open, setOpen] = useState(false);
@@ -64,12 +66,20 @@ export function BudgetManager(props: {
     <>
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
         <div className="glass inline-flex h-11 items-center gap-1 rounded-full p-1">
-          <Link href={`?month=${props.prevMonth}`} aria-label="Предыдущий месяц" className={arrow}>
+          <Link
+            href={`?month=${props.prevMonth}`}
+            aria-label={t("budget.prevMonth")}
+            className={arrow}
+          >
             <ChevronLeft className="size-5" />
           </Link>
           <span className="px-2 text-sm font-semibold">{props.monthLabel}</span>
           {props.nextMonth ? (
-            <Link href={`?month=${props.nextMonth}`} aria-label="Следующий месяц" className={arrow}>
+            <Link
+              href={`?month=${props.nextMonth}`}
+              aria-label={t("budget.nextMonth")}
+              className={arrow}
+            >
               <ChevronRight className="size-5" />
             </Link>
           ) : (
@@ -86,13 +96,13 @@ export function BudgetManager(props: {
               onClick={() =>
                 startTransition(async () => {
                   const r = await copyBudgetsFromPrevious(month);
-                  if (!r.ok) toast.error(r.error);
-                  else if (r.data.copied) toast.success(`Скопировано лимитов: ${r.data.copied}`);
-                  else toast("В прошлом месяце бюджетов не было");
+                  if (!r.ok) toast.error(t.dyn(r.error));
+                  else if (r.data.copied) toast.success(t("budget.copied", { n: r.data.copied }));
+                  else toast(t("budget.nothingToCopy"));
                 })
               }
             >
-              <Copy /> Как в прошлом месяце
+              <Copy /> {t("budget.copyPrev")}
             </Button>
           )}
           <Button
@@ -102,7 +112,7 @@ export function BudgetManager(props: {
               setOpen(true);
             }}
           >
-            <Plus /> Новый бюджет
+            <Plus /> {t("budget.new")}
           </Button>
         </div>
       </div>
@@ -111,18 +121,20 @@ export function BudgetManager(props: {
         <Card>
           <EmptyState
             icon={PiggyBank}
-            title="Бюджетов пока нет"
-            description="Задайте месячный лимит для категории — например, не больше 10 000 ₽ на кафе. Мы предупредим на 80% и при превышении."
+            title={t("budget.empty")}
+            description={t("budget.emptyText")}
           />
         </Card>
       ) : (
         <>
           <Card className="mb-5">
             <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
-              <span className="font-semibold">Всего по бюджетам</span>
+              <span className="font-semibold">{t("budget.total")}</span>
               <span className="num text-muted-foreground text-sm">
-                <b className="text-foreground">{formatMoney(totalSpent, currency)}</b> из{" "}
-                {formatMoney(totalLimit, currency)}
+                {rich(t("budget.ofAmount"), {
+                  spent: <b className="text-foreground">{fmt.money(totalSpent, currency)}</b>,
+                  limit: fmt.money(totalLimit, currency),
+                })}
               </span>
             </div>
             <Progress
@@ -134,7 +146,7 @@ export function BudgetManager(props: {
                     ? "warning"
                     : "primary"
               }
-              aria-label="Всего по бюджетам"
+              aria-label={t("budget.total")}
             />
           </Card>
           <ul className="grid gap-3 sm:gap-5 md:grid-cols-2">
@@ -154,7 +166,7 @@ export function BudgetManager(props: {
                             s.cls,
                           )}
                         >
-                          <s.icon className="size-3.5" aria-hidden /> {s.text}
+                          <s.icon className="size-3.5" aria-hidden /> {t(s.text)}
                         </p>
                       </div>
                       <Button
@@ -165,27 +177,38 @@ export function BudgetManager(props: {
                           setOpen(true);
                         }}
                       >
-                        Изменить
+                        {t("common.edit")}
                       </Button>
                     </div>
                     <Progress
                       value={b.pct * 100}
                       tone={s.tone}
-                      aria-label={`${b.name}: ${Math.round(b.pct * 100)}% лимита`}
+                      aria-label={t("budget.ariaPct", {
+                        name: b.name,
+                        pct: Math.round(b.pct * 100),
+                      })}
                     />
                     <div className="flex flex-wrap justify-between gap-2 text-sm">
                       <span className="num">
-                        <b>{formatMoney(b.spent, currency)}</b>{" "}
+                        <b>{fmt.money(b.spent, currency)}</b>{" "}
                         <span className="text-muted-foreground">
-                          из {formatMoney(b.limit, currency)} · {Math.round(b.pct * 100)}%
+                          {t("budget.ofLimit", {
+                            limit: fmt.money(b.limit, currency),
+                            pct: Math.round(b.pct * 100),
+                          })}
                         </span>
                       </span>
                       <span
                         className={cn("num", left < 0 ? "text-expense" : "text-muted-foreground")}
                       >
                         {left >= 0
-                          ? `Осталось ${formatMoney(left, currency)}${props.daysLeft ? ` на ${props.daysLeft} дн.` : ""}`
-                          : `Перерасход ${formatMoney(-left, currency)}`}
+                          ? props.daysLeft
+                            ? t("budget.leftDays", {
+                                amount: fmt.money(left, currency),
+                                n: props.daysLeft,
+                              })
+                            : t("budget.left", { amount: fmt.money(left, currency) })
+                          : t("budget.overspent", { amount: fmt.money(-left, currency) })}
                       </span>
                     </div>
                   </Card>
@@ -199,7 +222,7 @@ export function BudgetManager(props: {
       <ResponsiveSheet
         open={open}
         onOpenChange={setOpen}
-        title={editing ? `Бюджет «${editing.name}»` : "Новый бюджет"}
+        title={editing ? t("budget.titleNamed", { name: editing.name }) : t("budget.new")}
       >
         <BudgetForm
           key={`${editing?.id ?? "new"}-${open}`}
@@ -224,6 +247,7 @@ function BudgetForm({
   month: string;
   onDone: () => void;
 }) {
+  const { t } = useI18n();
   const [categoryId, setCategoryId] = useState(editing?.categoryId ?? free[0]?.id ?? "");
   const [limit, setLimit] = useState(editing ? minorToInput(editing.limit) : "");
   const focusRef = useDesktopAutoFocus<HTMLInputElement>();
@@ -241,14 +265,14 @@ function BudgetForm({
             setErrors(r.fieldErrors ?? { form: r.error });
             return;
           }
-          toast.success("Бюджет сохранён");
+          toast.success(t("budget.saved"));
           onDone();
         });
       }}
     >
       {!editing && (
         <div className="grid gap-1.5">
-          <Label htmlFor="b-cat">Категория расходов</Label>
+          <Label htmlFor="b-cat">{t("budget.expenseCategory")}</Label>
           <NativeSelect
             id="b-cat"
             value={categoryId}
@@ -263,7 +287,7 @@ function BudgetForm({
         </div>
       )}
       <div className="grid gap-1.5">
-        <Label htmlFor="b-limit">Лимит на месяц</Label>
+        <Label htmlFor="b-limit">{t("budget.limit")}</Label>
         <Input
           id="b-limit"
           inputMode="decimal"
@@ -274,11 +298,11 @@ function BudgetForm({
           aria-invalid={Boolean(errors.limit)}
           ref={focusRef}
         />
-        {errors.limit && <p className="text-expense text-[13px]">{errors.limit}</p>}
+        {errors.limit && <p className="text-expense text-[13px]">{t.dyn(errors.limit)}</p>}
       </div>
       {errors.form && (
         <p role="alert" className="bg-expense/10 text-expense rounded-sm px-3 py-2 text-sm">
-          {errors.form}
+          {t.dyn(errors.form)}
         </p>
       )}
       <div className="flex gap-2">
@@ -287,16 +311,16 @@ function BudgetForm({
             type="button"
             variant="secondary"
             size="icon"
-            aria-label="Удалить бюджет"
+            aria-label={t("budget.deleteAria")}
             className="text-expense"
             disabled={pending}
             onClick={() =>
               startTransition(async () => {
                 const r = await deleteBudget(editing.id);
                 if (r.ok) {
-                  toast.success("Бюджет удалён");
+                  toast.success(t("budget.deleted"));
                   onDone();
-                } else toast.error(r.error);
+                } else toast.error(t.dyn(r.error));
               })
             }
           >
@@ -304,7 +328,7 @@ function BudgetForm({
           </Button>
         )}
         <Button type="submit" className="flex-1" disabled={pending || !categoryId}>
-          {pending ? "Сохраняем…" : "Сохранить"}
+          {pending ? t("common.saving") : t("common.save")}
         </Button>
       </div>
     </form>

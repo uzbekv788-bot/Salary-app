@@ -3,7 +3,7 @@
 import { Repeat } from "lucide-react";
 import { CategoryIcon } from "@/components/ui/category-icon";
 import { useAddTransaction } from "@/components/transactions/add-transaction-provider";
-import { formatMoney } from "@/lib/money";
+import { useI18n } from "@/components/i18n/locale-provider";
 import type { TransactionDTO } from "@/lib/queries/finance";
 import { cn } from "@/lib/utils";
 
@@ -18,6 +18,7 @@ export function TransactionRow({
   meta?: string;
 }) {
   const { openForm } = useAddTransaction();
+  const { t, fmt } = useI18n();
   const amount = tx.type === "INCOME" ? tx.amount : -tx.amount;
   return (
     <li>
@@ -33,7 +34,7 @@ export function TransactionRow({
             {tx.recurringId && (
               <Repeat
                 className="text-muted-foreground size-3.5 shrink-0"
-                aria-label="Регулярный платёж"
+                aria-label={t("tx.recurringAria")}
               />
             )}
           </span>
@@ -48,7 +49,7 @@ export function TransactionRow({
               amount > 0 ? "text-income" : "text-expense",
             )}
           >
-            {formatMoney(amount, currency, { signed: true })}
+            {fmt.money(amount, currency, { signed: true })}
           </span>
           <span className="text-muted-foreground block text-[13px]">{tx.wallet.name}</span>
         </span>

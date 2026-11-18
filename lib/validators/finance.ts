@@ -3,17 +3,17 @@ import { CATEGORY_COLORS, CATEGORY_ICONS } from "@/lib/design/category-palette";
 import { parseAmount } from "@/lib/money";
 
 const id = z.string().min(1).max(64);
-const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Выберите дату");
+const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "v.date");
 
 /** Сумма из поля ввода ("12 500,50") → минорные единицы; строго > 0. */
 const positiveAmount = z.union([z.string(), z.number()]).transform((v, ctx) => {
   const minor = parseAmount(typeof v === "string" ? v : v);
   if (minor === null || minor <= 0) {
-    ctx.addIssue({ code: "custom", message: "Введите сумму больше нуля" });
+    ctx.addIssue({ code: "custom", message: "v.amountPositive" });
     return z.NEVER;
   }
   if (minor > 100_000_000_000) {
-    ctx.addIssue({ code: "custom", message: "Слишком большая сумма" });
+    ctx.addIssue({ code: "custom", message: "v.amountTooBig" });
     return z.NEVER;
   }
   return minor;
@@ -30,7 +30,7 @@ export const transactionSchema = z.object({
   note: z
     .string()
     .trim()
-    .max(200, "Не длиннее 200 символов")
+    .max(200, "v.max200")
     .optional()
     .transform((v) => v || null),
   /** Офлайн-ввод: ID с устройства, повторная отправка не создаёт дубль */
@@ -39,20 +39,20 @@ export const transactionSchema = z.object({
 export type TransactionInput = z.input<typeof transactionSchema>;
 
 export const categorySchema = z.object({
-  name: z.string().trim().min(1, "Введите название").max(40, "Не длиннее 40 символов"),
+  name: z.string().trim().min(1, "v.title").max(40, "v.max40"),
   type: txType,
-  icon: z.string().refine((v) => v in CATEGORY_ICONS, "Выберите иконку"),
+  icon: z.string().refine((v) => v in CATEGORY_ICONS, "v.icon"),
   color: z.enum(CATEGORY_COLORS),
 });
 export type CategoryInput = z.input<typeof categorySchema>;
 
 export const walletSchema = z.object({
-  name: z.string().trim().min(1, "Введите название").max(40, "Не длиннее 40 символов"),
+  name: z.string().trim().min(1, "v.title").max(40, "v.max40"),
   type: z.enum(["CARD", "CASH", "SAVINGS", "OTHER"]),
   initialBalance: z.union([z.string(), z.number()]).transform((v, ctx) => {
     const minor = parseAmount(typeof v === "string" && v.trim() === "" ? "0" : v);
     if (minor === null) {
-      ctx.addIssue({ code: "custom", message: "Введите сумму" });
+      ctx.addIssue({ code: "custom", message: "v.amount" });
       return z.NEVER;
     }
     return minor;
@@ -62,7 +62,7 @@ export type WalletInput = z.input<typeof walletSchema>;
 
 export const budgetSchema = z.object({
   categoryId: id,
-  month: z.string().regex(/^\d{4}-\d{2}-01$/, "Некорректный месяц"),
+  month: z.string().regex(/^\d{4}-\d{2}-01$/, "v.month"),
   limit: positiveAmount,
 });
 export type BudgetInput = z.input<typeof budgetSchema>;
@@ -78,7 +78,7 @@ export const recurringSchema = z
     note: z
       .string()
       .trim()
-      .max(200, "Не длиннее 200 символов")
+      .max(200, "v.max200")
       .optional()
       .transform((v) => v || null),
     frequency: frequencySchema,
@@ -93,13 +93,13 @@ export const recurringSchema = z
   })
   .refine((v) => !v.endDate || v.endDate >= v.nextDate, {
     path: ["endDate"],
-    message: "Дата окончания раньше начала",
+    message: "v.endBeforeStart",
   });
 export type RecurringInput = z.input<typeof recurringSchema>;
 
 export const goalSchema = z.object({
-  name: z.string().trim().min(1, "Назовите цель").max(40, "Не длиннее 40 символов"),
-  icon: z.string().refine((v) => v in CATEGORY_ICONS, "Выберите иконку"),
+  name: z.string().trim().min(1, "v.goalName").max(40, "v.max40"),
+  icon: z.string().refine((v) => v in CATEGORY_ICONS, "v.icon"),
   color: z.enum(CATEGORY_COLORS),
   target: positiveAmount,
   deadline: z

@@ -1,13 +1,12 @@
-import Link from "next/link";
+import Link from "@/components/i18n/link";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { CategoryIcon } from "@/components/ui/category-icon";
 import { categoryColorVar } from "@/lib/design/category-palette";
-import { shortDate } from "@/lib/format-date";
-import { formatMoney } from "@/lib/money";
+import { getI18n } from "@/lib/i18n/server";
 import { upcomingOccurrences } from "@/lib/recurring";
 import type { GoalDTO, RecurringDTO } from "@/lib/queries/planning";
 
-export function UpcomingCard({
+export async function UpcomingCard({
   rules,
   today,
   currency,
@@ -16,14 +15,15 @@ export function UpcomingCard({
   today: string;
   currency: string;
 }) {
+  const { t, fmt } = await getI18n();
   const items = upcomingOccurrences(rules, today).slice(0, 5);
   if (!items.length) return null;
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Ближайшие платежи</CardTitle>
+        <CardTitle>{t("dash.upcoming")}</CardTitle>
         <Link href="/recurring" className="text-primary text-sm font-semibold hover:underline">
-          Все
+          {t("common.all")}
         </Link>
       </CardHeader>
       <ul className="grid gap-3">
@@ -33,11 +33,11 @@ export function UpcomingCard({
             <span className="min-w-0 flex-1">
               <span className="block truncate font-medium">{r.note || r.category.name}</span>
               <span className="text-muted-foreground block text-[13px]">
-                {date === today ? "сегодня" : shortDate(date)}
+                {date === today ? t("common.today") : fmt.short(date)}
               </span>
             </span>
             <span className={`num font-semibold ${r.type === "INCOME" ? "text-income" : ""}`}>
-              {formatMoney(r.type === "INCOME" ? r.amount : -r.amount, currency, { signed: true })}
+              {fmt.money(r.type === "INCOME" ? r.amount : -r.amount, currency, { signed: true })}
             </span>
           </li>
         ))}
@@ -46,26 +46,30 @@ export function UpcomingCard({
   );
 }
 
-export function GoalsCard({ goals, currency }: { goals: GoalDTO[]; currency: string }) {
+export async function GoalsCard({ goals, currency }: { goals: GoalDTO[]; currency: string }) {
+  const { t, fmt } = await getI18n();
   const active = goals.filter((g) => !g.completedAt).slice(0, 3);
   if (!active.length) return null;
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Цели</CardTitle>
+        <CardTitle>{t("dash.goals")}</CardTitle>
         <Link href="/goals" className="text-primary text-sm font-semibold hover:underline">
-          Все
+          {t("common.all")}
         </Link>
       </CardHeader>
       <ul className="grid gap-4">
         {active.map((g) => {
           const pct = Math.min(1, g.saved / g.target);
           return (
-            <li key={g.id} className="grid gap-1.5">
-              <div className="flex items-center justify-between gap-2 text-sm">
+            <li key={g.id} className="grid min-w-0 gap-1.5">
+              <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-0.5 text-sm">
                 <span className="min-w-0 truncate font-medium">{g.name}</span>
                 <span className="num text-muted-foreground shrink-0 whitespace-nowrap">
-                  {Math.floor(pct * 100)}% · ещё {formatMoney(g.target - g.saved, currency)}
+                  {t("dash.goalLeft", {
+                    pct: Math.floor(pct * 100),
+                    amount: fmt.money(g.target - g.saved, currency),
+                  })}
                 </span>
               </div>
               <div

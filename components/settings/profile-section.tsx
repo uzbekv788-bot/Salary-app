@@ -9,7 +9,8 @@ import { Label } from "@/components/ui/label";
 import { NativeSelect } from "@/components/ui/native-select";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
 import { updateProfile } from "@/lib/actions/account";
-import { CURRENCIES } from "@/lib/currencies";
+import { CURRENCIES, currencySymbol } from "@/lib/currencies";
+import { useI18n } from "@/components/i18n/locale-provider";
 
 export function ProfileSection({
   name: n0,
@@ -22,6 +23,7 @@ export function ProfileSection({
   currency: string;
   timezone: string;
 }) {
+  const { t, locale } = useI18n();
   const [name, setName] = useState(n0);
   const [currency, setCurrency] = useState(c0);
   const [timezone, setTimezone] = useState(t0);
@@ -33,7 +35,7 @@ export function ProfileSection({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Профиль</CardTitle>
+        <CardTitle>{t("settings.profile")}</CardTitle>
       </CardHeader>
       <form
         noValidate
@@ -44,16 +46,16 @@ export function ProfileSection({
             const r = await updateProfile({ name, currency, timezone });
             if (!r.ok) {
               setErrors(r.fieldErrors ?? {});
-              toast.error(r.error);
+              toast.error(t.dyn(r.error));
               return;
             }
             setErrors({});
-            toast.success("Профиль сохранён");
+            toast.success(t("settings.profileSaved"));
           });
         }}
       >
         <div className="grid gap-1.5">
-          <Label htmlFor="p-name">Имя</Label>
+          <Label htmlFor="p-name">{t("auth.name")}</Label>
           <Input
             id="p-name"
             value={name}
@@ -61,29 +63,27 @@ export function ProfileSection({
             onChange={(e) => setName(e.target.value)}
             aria-invalid={Boolean(errors.name)}
           />
-          {errors.name && <p className="text-expense text-[13px]">{errors.name}</p>}
+          {errors.name && <p className="text-expense text-[13px]">{t.dyn(errors.name)}</p>}
         </div>
         <div className="grid gap-1.5">
           <Label htmlFor="p-email">Email</Label>
           <Input id="p-email" value={email} disabled />
         </div>
         <div className="grid gap-1.5">
-          <Label htmlFor="p-cur">Валюта</Label>
+          <Label htmlFor="p-cur">{t("settings.currency")}</Label>
           <NativeSelect id="p-cur" value={currency} onChange={(e) => setCurrency(e.target.value)}>
             {CURRENCIES.map((c) => (
               <option key={c.code} value={c.code}>
-                {c.symbol} — {c.name}
+                {currencySymbol(c.code, locale)} — {t(`currencies.${c.code}`)}
               </option>
             ))}
           </NativeSelect>
           {currency !== c0 && (
-            <p className="text-muted-foreground text-[13px]">
-              Суммы не пересчитываются по курсу — меняется только знак валюты.
-            </p>
+            <p className="text-muted-foreground text-[13px]">{t("settings.currencyHint")}</p>
           )}
         </div>
         <div className="grid gap-1.5">
-          <Label htmlFor="p-tz">Часовой пояс</Label>
+          <Label htmlFor="p-tz">{t("settings.timezone")}</Label>
           <NativeSelect id="p-tz" value={timezone} onChange={(e) => setTimezone(e.target.value)}>
             {zones.map((z) => (
               <option key={z} value={z}>
@@ -94,10 +94,10 @@ export function ProfileSection({
         </div>
         <div className="flex flex-wrap items-center justify-between gap-3 sm:col-span-2">
           <div className="text-muted-foreground flex items-center gap-3 text-sm">
-            Тема <ThemeToggle />
+            {t("settings.theme")} <ThemeToggle />
           </div>
           <Button type="submit" disabled={pending || !dirty}>
-            {pending ? "Сохраняем…" : "Сохранить"}
+            {pending ? t("common.saving") : t("common.save")}
           </Button>
         </div>
       </form>

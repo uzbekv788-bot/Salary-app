@@ -16,15 +16,15 @@ const isTimeZone = (tz: string) => {
 export const onboardingSchema = z
   .object({
     currency: z.enum(CURRENCY_CODES),
-    timezone: z.string().refine(isTimeZone, "Неизвестный часовой пояс"),
+    timezone: z.string().refine(isTimeZone, "v.timezone"),
     categoryKeys: z.array(z.enum(categoryKeys)),
     wallet: z.object({
-      name: z.string().trim().min(1, "Назовите счёт").max(40, "Слишком длинное название"),
+      name: z.string().trim().min(1, "v.walletName").max(40, "v.titleLong"),
       type: z.enum(["CARD", "CASH", "SAVINGS", "OTHER"]),
       initialBalance: z.string().transform((v, ctx) => {
         const minor = parseAmount(v.trim() === "" ? "0" : v);
         if (minor === null) {
-          ctx.addIssue({ code: "custom", message: "Введите сумму, например 15 000" });
+          ctx.addIssue({ code: "custom", message: "v.amountExample" });
           return z.NEVER;
         }
         return minor;
@@ -38,7 +38,7 @@ export const onboardingSchema = z
     },
     {
       path: ["categoryKeys"],
-      message: "Оставьте хотя бы одну категорию доходов и одну — расходов",
+      message: "v.needBothCategories",
     },
   );
 

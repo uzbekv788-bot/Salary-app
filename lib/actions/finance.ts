@@ -27,10 +27,9 @@ async function checkRefs(userId: string, categoryId: string, walletId: string, t
     db.category.findFirst({ where: { id: categoryId, userId }, select: { type: true } }),
     db.wallet.findFirst({ where: { id: walletId, userId }, select: { id: true } }),
   ]);
-  if (!category) return fail("Категория не найдена", { categoryId: "Выберите категорию" });
-  if (category.type !== type)
-    return fail("Категория не подходит к типу операции", { categoryId: "Выберите категорию" });
-  if (!wallet) return fail("Счёт не найден", { walletId: "Выберите счёт" });
+  if (!category) return fail("err.categoryNotFound", { categoryId: "v.category" });
+  if (category.type !== type) return fail("err.categoryType", { categoryId: "v.category" });
+  if (!wallet) return fail("err.walletNotFound", { walletId: "v.wallet" });
   return null;
 }
 
@@ -77,7 +76,7 @@ export async function saveTransaction(
       where: { id, userId: user.id, deletedAt: null },
       data,
     });
-    if (!count) return fail("Операция не найдена");
+    if (!count) return fail("err.txNotFound");
     refresh();
     return ok({ id, budget: await budgetAfter(user.id, rest.type, rest.categoryId, date) });
   }
@@ -134,7 +133,7 @@ export async function deleteTransaction(id: string): Promise<ActionResult<undefi
     where: { id, userId: user.id, deletedAt: null },
     data: { deletedAt: new Date() },
   });
-  if (!count) return fail("Операция не найдена");
+  if (!count) return fail("err.txNotFound");
   refresh();
   return ok(undefined);
 }
@@ -145,7 +144,7 @@ export async function restoreTransaction(id: string): Promise<ActionResult<undef
     where: { id, userId: user.id, deletedAt: { not: null } },
     data: { deletedAt: null },
   });
-  if (!count) return fail("Операцию уже нельзя восстановить");
+  if (!count) return fail("err.cannotRestore");
   refresh();
   return ok(undefined);
 }
@@ -169,14 +168,14 @@ export async function saveCategory(
       NOT: id ? { id } : undefined,
     },
   });
-  if (duplicate) return fail("Такая категория уже есть", { name: "Такая категория уже есть" });
+  if (duplicate) return fail("err.categoryExists", { name: "err.categoryExists" });
 
   if (id) {
     const existing = await db.category.findFirst({
       where: { id, userId: user.id },
       select: { type: true },
     });
-    if (!existing) return fail("Категория не найдена");
+    if (!existing) return fail("err.categoryNotFound");
     // Тип менять нельзя: в категории уже могут быть операции другого типа
     await db.category.update({ where: { id }, data: { ...parsed.data, type: existing.type } });
     refresh();
@@ -203,7 +202,7 @@ export async function setCategoryArchived(
     where: { id, userId: user.id },
     data: { archived },
   });
-  if (!count) return fail("Категория не найдена");
+  if (!count) return fail("err.categoryNotFound");
   refresh();
   return ok(undefined);
 }
@@ -221,7 +220,7 @@ export async function deleteCategory(
     where: { id, userId: user.id },
     select: { type: true },
   });
-  if (!category) return fail("Категория не найдена");
+  if (!category) return fail("err.categoryNotFound");
   // Регулярные правила тоже «используют» категорию: без переноса они удалились бы молча
   const [txCount, ruleCount] = await Promise.all([
     db.transaction.count({ where: { categoryId: id } }),
@@ -230,12 +229,11 @@ export async function deleteCategory(
   const used = txCount + ruleCount;
 
   if (used > 0) {
-    if (!moveToId || moveToId === id)
-      return fail("В категории есть операции или регулярные платежи — выберите, куда их перенести");
+    if (!moveToId || moveToId === id) return fail("err.categoryInUse");
     const target = await db.category.findFirst({
       where: { id: moveToId, userId: user.id, type: category.type },
     });
-    if (!target) return fail("Категория для переноса не найдена");
+    if (!target) return fail("err.moveTargetNotFound");
     await db.$transaction([
       db.transaction.updateMany({
         where: { categoryId: id, userId: user.id },
@@ -267,7 +265,7 @@ export async function saveWallet(
   const data = { ...parsed.data, initialBalance: BigInt(parsed.data.initialBalance) };
   if (id) {
     const { count } = await db.wallet.updateMany({ where: { id, userId: user.id }, data });
-    if (!count) return fail("Счёт не найден");
+    if (!count) return fail("err.walletNotFound");
     refresh();
     return ok({ id });
   }
@@ -286,13 +284,13 @@ export async function setWalletArchived(
   const user = await requireUser();
   if (archived) {
     const active = await db.wallet.count({ where: { userId: user.id, archived: false } });
-    if (active <= 1) return fail("Нужен хотя бы один активный счёт");
+    if (active <= 1) return fail("err.needWallet");
   }
   const { count } = await db.wallet.updateMany({
     where: { id, userId: user.id },
     data: { archived },
   });
-  if (!count) return fail("Счёт не найден");
+  if (!count) return fail("err.walletNotFound");
   refresh();
   return ok(undefined);
 }
@@ -308,8 +306,8 @@ export async function upsertBudget(input: BudgetInput): Promise<ActionResult<und
     where: { id: categoryId, userId: user.id, type: "EXPENSE" },
   });
   if (!category)
-    return fail("Бюджет можно задать только для категории расходов", {
-      categoryId: "Выберите категорию",
+    return fail("err.budgetExpenseOnly", {
+      categoryId: "v.category",
     });
   const monthDate = fromDateStr(month);
   await db.budget.upsert({
@@ -324,7 +322,7 @@ export async function upsertBudget(input: BudgetInput): Promise<ActionResult<und
 export async function deleteBudget(id: string): Promise<ActionResult<undefined>> {
   const user = await requireUser();
   const { count } = await db.budget.deleteMany({ where: { id, userId: user.id } });
-  if (!count) return fail("Бюджет не найден");
+  if (!count) return fail("err.budgetNotFound");
   refresh();
   return ok(undefined);
 }
@@ -334,7 +332,7 @@ export async function copyBudgetsFromPrevious(
   month: string,
 ): Promise<ActionResult<{ copied: number }>> {
   const user = await requireUser();
-  if (!/^\d{4}-\d{2}-01$/.test(month)) return fail("Некорректный месяц");
+  if (!/^\d{4}-\d{2}-01$/.test(month)) return fail("v.month");
   const cur = fromDateStr(month);
   const prev = new Date(Date.UTC(cur.getUTCFullYear(), cur.getUTCMonth() - 1, 1));
   const prevBudgets = await db.budget.findMany({ where: { userId: user.id, month: prev } });

@@ -4,13 +4,20 @@ import { cn } from "@/lib/utils";
 /** Стеклянная карточка — базовая поверхность приложения (design.md §5). */
 function Card({ className, ...props }: React.ComponentProps<"div">) {
   return (
-    <div data-slot="card" className={cn("glass rounded-lg p-4 sm:p-5", className)} {...props} />
+    <div
+      data-slot="card"
+      className={cn("glass min-w-0 rounded-lg p-4 sm:p-5 [&>*]:min-w-0", className)}
+      {...props}
+    />
   );
 }
 
 function CardHeader({ className, ...props }: React.ComponentProps<"div">) {
   return (
-    <div className={cn("mb-4 flex items-center justify-between gap-3", className)} {...props} />
+    <div
+      className={cn("mb-4 flex flex-wrap items-center justify-between gap-3", className)}
+      {...props}
+    />
   );
 }
 

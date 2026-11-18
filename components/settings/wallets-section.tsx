@@ -20,19 +20,21 @@ import { ResponsiveSheet } from "@/components/ui/responsive-sheet";
 import { NativeSelect } from "@/components/ui/native-select";
 import { saveWallet, setWalletArchived } from "@/lib/actions/finance";
 import { formatAmountInput, minorToInput } from "@/lib/format-input";
-import { formatMoney } from "@/lib/money";
 import type { WalletDTO } from "@/lib/queries/finance";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/components/i18n/locale-provider";
+import type { TKey } from "@/lib/i18n/core";
 
 const TYPES = {
-  CARD: { label: "Карта", icon: CreditCard },
-  CASH: { label: "Наличные", icon: Banknote },
-  SAVINGS: { label: "Сбережения", icon: PiggyBank },
-  OTHER: { label: "Другое", icon: CircleDollarSign },
-} as const;
+  CARD: { label: "settings.walletTypes.CARD", icon: CreditCard },
+  CASH: { label: "settings.walletTypes.CASH", icon: Banknote },
+  SAVINGS: { label: "settings.walletTypes.SAVINGS", icon: PiggyBank },
+  OTHER: { label: "settings.walletTypes.OTHER", icon: CircleDollarSign },
+} as const satisfies Record<string, { label: TKey; icon: unknown }>;
 
 /** Счета с балансами и CRUD (tasks.md 7.5). */
 export function WalletsSection({ wallets, currency }: { wallets: WalletDTO[]; currency: string }) {
+  const { t, fmt } = useI18n();
   const [editing, setEditing] = useState<WalletDTO | null>(null);
   const [open, setOpen] = useState(false);
   const [pending, startTransition] = useTransition();
@@ -42,12 +44,10 @@ export function WalletsSection({ wallets, currency }: { wallets: WalletDTO[]; cu
     <Card>
       <CardHeader>
         <div>
-          <CardTitle>Счета</CardTitle>
+          <CardTitle>{t("settings.wallets")}</CardTitle>
           <p className="text-muted-foreground text-sm">
-            Всего:{" "}
-            <span className="num text-foreground font-semibold">
-              {formatMoney(total, currency)}
-            </span>
+            {t("settings.walletsTotal")}{" "}
+            <span className="num text-foreground font-semibold">{fmt.money(total, currency)}</span>
           </p>
         </div>
         <Button
@@ -58,7 +58,7 @@ export function WalletsSection({ wallets, currency }: { wallets: WalletDTO[]; cu
             setOpen(true);
           }}
         >
-          <Plus /> Добавить
+          <Plus /> {t("common.add")}
         </Button>
       </CardHeader>
       <ul className="grid gap-1">
@@ -68,7 +68,7 @@ export function WalletsSection({ wallets, currency }: { wallets: WalletDTO[]; cu
             <li
               key={w.id}
               className={cn(
-                "flex items-center gap-3 rounded-md px-1 py-2",
+                "flex min-w-0 items-center gap-2 rounded-md px-1 py-2 sm:gap-3",
                 w.archived && "opacity-55",
               )}
             >
@@ -78,17 +78,17 @@ export function WalletsSection({ wallets, currency }: { wallets: WalletDTO[]; cu
               <div className="min-w-0 flex-1">
                 <p className="truncate font-semibold">
                   {w.name}
-                  {w.archived && " · в архиве"}
+                  {w.archived && t("settings.inArchive")}
                 </p>
-                <p className="text-muted-foreground text-[13px]">{T.label}</p>
+                <p className="text-muted-foreground text-[13px]">{t(T.label)}</p>
               </div>
               <span className={cn("num font-semibold", w.balance < 0 && "text-expense")}>
-                {formatMoney(w.balance, currency)}
+                {fmt.money(w.balance, currency)}
               </span>
               <Button
                 variant="ghost"
                 size="icon-sm"
-                aria-label={`Изменить ${w.name}`}
+                aria-label={t("settings.editWallet", { name: w.name })}
                 onClick={() => {
                   setEditing(w);
                   setOpen(true);
@@ -100,12 +100,19 @@ export function WalletsSection({ wallets, currency }: { wallets: WalletDTO[]; cu
                 variant="ghost"
                 size="icon-sm"
                 disabled={pending}
-                aria-label={w.archived ? `Вернуть ${w.name}` : `В архив ${w.name}`}
+                aria-label={
+                  w.archived
+                    ? t("settings.unarchiveWallet", { name: w.name })
+                    : t("settings.archiveWallet", { name: w.name })
+                }
                 onClick={() =>
                   startTransition(async () => {
                     const r = await setWalletArchived(w.id, !w.archived);
-                    if (r.ok) toast.success(w.archived ? "Счёт восстановлен" : "Счёт в архиве");
-                    else toast.error(r.error);
+                    if (r.ok)
+                      toast.success(
+                        w.archived ? t("settings.walletRestored") : t("settings.walletArchived"),
+                      );
+                    else toast.error(t.dyn(r.error));
                   })
                 }
               >
@@ -118,7 +125,7 @@ export function WalletsSection({ wallets, currency }: { wallets: WalletDTO[]; cu
       <ResponsiveSheet
         open={open}
         onOpenChange={setOpen}
-        title={editing ? "Изменить счёт" : "Новый счёт"}
+        title={editing ? t("settings.editWalletTitle") : t("settings.newWallet")}
       >
         <WalletForm
           key={`${editing?.id ?? "new"}-${open}`}
@@ -131,6 +138,7 @@ export function WalletsSection({ wallets, currency }: { wallets: WalletDTO[]; cu
 }
 
 function WalletForm({ initial, onDone }: { initial: WalletDTO | null; onDone: () => void }) {
+  const { t } = useI18n();
   const [name, setName] = useState(initial?.name ?? "");
   const [type, setType] = useState<WalletDTO["type"]>(initial?.type ?? "CARD");
   const [balance, setBalance] = useState(initial ? minorToInput(initial.initialBalance) : "");
@@ -148,13 +156,13 @@ function WalletForm({ initial, onDone }: { initial: WalletDTO | null; onDone: ()
             setErrors(r.fieldErrors ?? { form: r.error });
             return;
           }
-          toast.success(initial ? "Счёт изменён" : "Счёт создан");
+          toast.success(initial ? t("settings.walletEdited") : t("settings.walletCreated"));
           onDone();
         });
       }}
     >
       <div className="grid gap-1.5">
-        <Label htmlFor="w-name">Название</Label>
+        <Label htmlFor="w-name">{t("common.name")}</Label>
         <Input
           id="w-name"
           value={name}
@@ -162,24 +170,24 @@ function WalletForm({ initial, onDone }: { initial: WalletDTO | null; onDone: ()
           onChange={(e) => setName(e.target.value)}
           aria-invalid={Boolean(errors.name)}
         />
-        {errors.name && <p className="text-expense text-[13px]">{errors.name}</p>}
+        {errors.name && <p className="text-expense text-[13px]">{t.dyn(errors.name)}</p>}
       </div>
       <div className="grid gap-1.5">
-        <Label htmlFor="w-type">Тип</Label>
+        <Label htmlFor="w-type">{t("common.type")}</Label>
         <NativeSelect
           id="w-type"
           value={type}
           onChange={(e) => setType(e.target.value as WalletDTO["type"])}
         >
-          {Object.entries(TYPES).map(([v, t]) => (
+          {Object.entries(TYPES).map(([v, def]) => (
             <option key={v} value={v}>
-              {t.label}
+              {t(def.label)}
             </option>
           ))}
         </NativeSelect>
       </div>
       <div className="grid gap-1.5">
-        <Label htmlFor="w-bal">Начальный баланс</Label>
+        <Label htmlFor="w-bal">{t("settings.initialBalance")}</Label>
         <Input
           id="w-bal"
           inputMode="decimal"
@@ -189,17 +197,15 @@ function WalletForm({ initial, onDone }: { initial: WalletDTO | null; onDone: ()
           className="num"
           aria-invalid={Boolean(errors.initialBalance)}
         />
-        <p className="text-muted-foreground text-[13px]">
-          Сколько было на счёте до первой операции в Salary.
-        </p>
+        <p className="text-muted-foreground text-[13px]">{t("settings.initialBalanceHint")}</p>
       </div>
       {errors.form && (
         <p role="alert" className="bg-expense/10 text-expense rounded-sm px-3 py-2 text-sm">
-          {errors.form}
+          {t.dyn(errors.form)}
         </p>
       )}
       <Button type="submit" disabled={pending}>
-        {pending ? "Сохраняем…" : "Сохранить"}
+        {pending ? t("common.saving") : t("common.save")}
       </Button>
     </form>
   );

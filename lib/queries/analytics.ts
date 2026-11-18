@@ -1,6 +1,7 @@
 import "server-only";
 import { addDays, addMonths, format, startOfMonth, startOfWeek } from "date-fns";
-import { ru } from "date-fns/locale";
+import { DATE_FNS_LOCALE } from "@/lib/i18n/format";
+import type { Locale } from "@/lib/i18n/config";
 import { db } from "@/lib/db";
 import { Prisma } from "@/lib/generated/prisma/client";
 import { parseDate, type Granularity, type ResolvedPeriod } from "@/lib/period";
@@ -75,10 +76,15 @@ const stepFn: Record<Granularity, (x: Date) => Date> = {
   week: (x) => addDays(x, 7),
   month: (x) => addMonths(x, 1),
 };
-const labelFn: Record<Granularity, (x: Date) => string> = {
-  day: (x) => format(x, "d MMM", { locale: ru }),
-  week: (x) => `с ${format(x, "d MMM", { locale: ru })}`,
-  month: (x) => format(x, "LLL yyyy", { locale: ru }),
+/** Подписи бакетов на языке интерфейса; weekOf — шаблон «с {date}» из словаря */
+const labelFn = (lang: Locale, weekOf: string): Record<Granularity, (x: Date) => string> => {
+  const locale = DATE_FNS_LOCALE[lang];
+  const dayFmt = lang === "en" ? "MMM d" : "d MMM";
+  return {
+    day: (x) => format(x, dayFmt, { locale }),
+    week: (x) => weekOf.replace("{date}", format(x, dayFmt, { locale })),
+    month: (x) => format(x, "LLL yyyy", { locale }),
+  };
 };
 
 /** Динамика: доходы/расходы по бакетам + накопленный баланс на конец каждого бакета. */
@@ -87,8 +93,10 @@ export async function getTrend(
   p: ResolvedPeriod,
   today: string,
   walletId?: string,
+  i18n: { lang: Locale; weekOf: string } = { lang: "ru", weekOf: "с {date}" },
 ): Promise<TrendPoint[]> {
   const g = p.granularity;
+  const labels = labelFn(i18n.lang, i18n.weekOf);
   const [rows, opening, initial] = await Promise.all([
     db.$queryRaw<{ bucket: Date; income: bigint | null; expense: bigint | null }[]>`
       SELECT date_trunc(${g}, date)::date AS bucket,
@@ -120,7 +128,7 @@ export async function getTrend(
     const future = key > today;
     out.push({
       bucket: key,
-      label: labelFn[g](x),
+      label: labels[g](x),
       income: future ? null : income,
       expense: future ? null : expense,
       balance: future ? null : balance,
@@ -145,6 +153,8 @@ export async function getByCategory(
   type: "INCOME" | "EXPENSE",
   maxSlices = 5,
   walletId?: string,
+  /** Подпись свёрнутого хвоста: (n) => «Прочее (n)» */
+  otherLabel: (n: number) => string = (n) => `Прочее (${n})`,
 ) {
   const rows = await db.$queryRaw<
     { id: string; name: string; icon: string; color: string; total: bigint }[]
@@ -163,7 +173,7 @@ export async function getByCategory(
     const t = tail.reduce((s, r) => s + r.total, 0);
     slices.push({
       id: "other",
-      name: `Прочее (${tail.length})`,
+      name: otherLabel(tail.length),
       icon: "CircleEllipsis",
       color: "slate",
       total: t,
@@ -182,6 +192,7 @@ export async function getMonthComparison(
   userId: string,
   endDate: string,
   months = 6,
+  lang: Locale = "ru",
 ): Promise<MonthPoint[]> {
   const end = startOfMonth(parseDate(endDate)!);
   const start = addMonths(end, -(months - 1));
@@ -200,7 +211,7 @@ export async function getMonthComparison(
     const r = by.get(key);
     return {
       month: key,
-      label: format(m, "LLL yy", { locale: ru }).replace(".", ""),
+      label: format(m, "LLL yy", { locale: DATE_FNS_LOCALE[lang] }).replace(".", ""),
       income: Number(r?.income ?? 0),
       expense: Number(r?.expense ?? 0),
     };

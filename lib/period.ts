@@ -24,19 +24,11 @@ import {
   startOfYear,
   subDays,
 } from "date-fns";
-import { ru } from "date-fns/locale";
+import { enUS, ru, uz } from "date-fns/locale";
 
 export const PERIOD_KINDS = ["week", "month", "quarter", "year", "custom"] as const;
 export type PeriodKind = (typeof PERIOD_KINDS)[number];
 export type Granularity = "day" | "week" | "month";
-
-export const PERIOD_LABELS: Record<PeriodKind, string> = {
-  week: "Неделя",
-  month: "Месяц",
-  quarter: "Квартал",
-  year: "Год",
-  custom: "Свой период",
-};
 
 export type ResolvedPeriod = {
   kind: PeriodKind;
@@ -100,20 +92,35 @@ const shift: Record<Exclude<PeriodKind, "custom">, (d: Date, n: number) => Date>
 
 const ROMAN = ["I", "II", "III", "IV"];
 const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+const DATE_LOCALES = { ru, en: enUS, uz } as const;
+export type PeriodLocale = keyof typeof DATE_LOCALES;
 
-function labelFor(kind: PeriodKind, from: Date, to: Date): string {
+/** Подпись периода на языке интерфейса: «Ноябрь 2026» / «November 2026» / «Noyabr 2026». */
+function labelFor(kind: PeriodKind, from: Date, to: Date, lang: PeriodLocale): string {
+  const locale = DATE_LOCALES[lang];
+  const q = getQuarter(from);
+  const y = format(from, "yyyy");
   switch (kind) {
     case "month":
-      return capitalize(format(from, "LLLL yyyy", { locale: ru }));
+      return capitalize(format(from, "LLLL yyyy", { locale }));
     case "quarter":
-      return `${ROMAN[getQuarter(from) - 1]} квартал ${format(from, "yyyy")}`;
+      return lang === "en"
+        ? `Q${q} ${y}`
+        : lang === "uz"
+          ? `${y}-yil ${q}-chorak`
+          : `${ROMAN[q - 1]} квартал ${y}`;
     case "year":
-      return format(from, "yyyy");
+      return y;
     default: {
       const sameYear = from.getFullYear() === to.getFullYear();
       const sameMonth = sameYear && from.getMonth() === to.getMonth();
-      if (sameMonth) return `${format(from, "d")}–${format(to, "d MMM yyyy", { locale: ru })}`;
-      return `${format(from, sameYear ? "d MMM" : "d MMM yyyy", { locale: ru })} – ${format(to, "d MMM yyyy", { locale: ru })}`;
+      if (lang === "en") {
+        if (sameMonth)
+          return `${format(from, "MMM d", { locale })}–${format(to, "d, yyyy", { locale })}`;
+        return `${format(from, sameYear ? "MMM d" : "MMM d, yyyy", { locale })} – ${format(to, "MMM d, yyyy", { locale })}`;
+      }
+      if (sameMonth) return `${format(from, "d")}–${format(to, "d MMM yyyy", { locale })}`;
+      return `${format(from, sameYear ? "d MMM" : "d MMM yyyy", { locale })} – ${format(to, "d MMM yyyy", { locale })}`;
     }
   }
 }
@@ -125,7 +132,11 @@ export function granularityFor(days: number): Granularity {
 }
 
 /** Разбирает параметры URL в конкретный диапазон дат (+ предыдущий период той же длины). */
-export function resolvePeriod(params: Params, today: string): ResolvedPeriod {
+export function resolvePeriod(
+  params: Params,
+  today: string,
+  lang: PeriodLocale = "ru",
+): ResolvedPeriod {
   const todayDate = parseDate(today)!;
   const rawKind = first(params.period);
   let kind: PeriodKind = PERIOD_KINDS.includes(rawKind as PeriodKind)
@@ -181,7 +192,7 @@ export function resolvePeriod(params: Params, today: string): ResolvedPeriod {
     prevTo: fmt(prevTo),
     days,
     granularity: granularityFor(days),
-    label: labelFor(kind, from, to),
+    label: labelFor(kind, from, to, lang),
     prevParams,
     nextParams: isCurrent || to >= todayDate ? null : nextParams,
     isCurrent,

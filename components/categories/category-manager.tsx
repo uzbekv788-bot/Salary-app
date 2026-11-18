@@ -19,17 +19,11 @@ import { Segmented } from "@/components/ui/segmented";
 import { CategoryForm } from "@/components/categories/category-form";
 import { deleteCategory, setCategoryArchived } from "@/lib/actions/finance";
 import type { CategoryDTO } from "@/lib/queries/finance";
-
-const plural = (n: number) => {
-  const m10 = n % 10,
-    m100 = n % 100;
-  if (m10 === 1 && m100 !== 11) return "операция";
-  if (m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14)) return "операции";
-  return "операций";
-};
+import { useI18n } from "@/components/i18n/locale-provider";
 
 /** Страница категорий (tasks.md 7.4): вкладки, CRUD, архив, удаление с переносом операций. */
 export function CategoryManager({ categories }: { categories: CategoryDTO[] }) {
+  const { t } = useI18n();
   const [type, setType] = useState<"EXPENSE" | "INCOME">("EXPENSE");
   const [editing, setEditing] = useState<CategoryDTO | null>(null);
   const [formOpen, setFormOpen] = useState(false);
@@ -45,7 +39,7 @@ export function CategoryManager({ categories }: { categories: CategoryDTO[] }) {
     startTransition(async () => {
       const res = await fn();
       if (res.ok) toast.success(success);
-      else toast.error(res.error);
+      else toast.error(t.dyn(res.error ?? "auth.err.generic"));
     });
 
   const row = (c: CategoryDTO) => (
@@ -53,13 +47,11 @@ export function CategoryManager({ categories }: { categories: CategoryDTO[] }) {
       <CategoryIcon icon={c.icon} color={c.color} />
       <div className="min-w-0 flex-1">
         <p className="truncate font-semibold">{c.name}</p>
-        <p className="text-muted-foreground text-[13px]">
-          {c.txCount} {plural(c.txCount)}
-        </p>
+        <p className="text-muted-foreground text-[13px]">{t.tp("cat.txCount", c.txCount)}</p>
       </div>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="icon-sm" aria-label={`Действия: ${c.name}`}>
+          <Button variant="ghost" size="icon-sm" aria-label={t("cat.actions", { name: c.name })}>
             <MoreHorizontal />
           </Button>
         </DropdownMenuTrigger>
@@ -70,24 +62,24 @@ export function CategoryManager({ categories }: { categories: CategoryDTO[] }) {
               setFormOpen(true);
             }}
           >
-            <Pencil /> Изменить
+            <Pencil /> {t("common.edit")}
           </DropdownMenuItem>
           <DropdownMenuItem
             disabled={pending}
             onSelect={() =>
               run(
                 () => setCategoryArchived(c.id, !c.archived),
-                c.archived ? "Категория восстановлена" : "Категория в архиве",
+                c.archived ? t("cat.restored") : t("cat.archived"),
               )
             }
           >
             {c.archived ? (
               <>
-                <ArchiveRestore /> Вернуть из архива
+                <ArchiveRestore /> {t("cat.unarchive")}
               </>
             ) : (
               <>
-                <Archive /> В архив
+                <Archive /> {t("cat.archive")}
               </>
             )}
           </DropdownMenuItem>
@@ -98,7 +90,7 @@ export function CategoryManager({ categories }: { categories: CategoryDTO[] }) {
               setMoveTo("");
             }}
           >
-            <Trash2 className="!text-expense" /> Удалить
+            <Trash2 className="!text-expense" /> {t("common.delete")}
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
@@ -113,19 +105,19 @@ export function CategoryManager({ categories }: { categories: CategoryDTO[] }) {
     <>
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
         <Segmented
-          label="Тип категорий"
+          label={t("cat.typeLabel")}
           className="max-w-xs"
           value={type}
           onChange={setType}
           options={[
             {
               value: "EXPENSE",
-              label: "Расходы",
+              label: t("common.expense"),
               activeClass: "bg-expense text-expense-foreground",
             },
             {
               value: "INCOME",
-              label: "Доходы",
+              label: t("common.income"),
               activeClass: "bg-income text-income-foreground",
             },
           ]}
@@ -136,7 +128,7 @@ export function CategoryManager({ categories }: { categories: CategoryDTO[] }) {
             setFormOpen(true);
           }}
         >
-          <Plus /> Новая категория
+          <Plus /> {t("cat.new")}
         </Button>
       </div>
 
@@ -144,14 +136,14 @@ export function CategoryManager({ categories }: { categories: CategoryDTO[] }) {
         {active.length ? (
           <ul className="grid gap-x-4 md:grid-cols-2">{active.map(row)}</ul>
         ) : (
-          <p className="text-muted-foreground p-6 text-center text-sm">Нет активных категорий</p>
+          <p className="text-muted-foreground p-6 text-center text-sm">{t("cat.noneActive")}</p>
         )}
       </Card>
 
       {archived.length > 0 && (
         <details className="mt-5">
           <summary className="text-muted-foreground mb-2 cursor-pointer text-sm font-semibold">
-            Архив ({archived.length})
+            {t("cat.archiveSection", { n: archived.length })}
           </summary>
           <Card className="p-2 opacity-80 sm:p-3">
             <ul className="grid gap-x-4 md:grid-cols-2">{archived.map(row)}</ul>
@@ -164,10 +156,10 @@ export function CategoryManager({ categories }: { categories: CategoryDTO[] }) {
         onOpenChange={setFormOpen}
         title={
           editing
-            ? "Изменить категорию"
+            ? t("cat.editTitle")
             : type === "EXPENSE"
-              ? "Новая категория расходов"
-              : "Новая категория доходов"
+              ? t("cat.newExpense")
+              : t("cat.newIncome")
         }
       >
         <CategoryForm
@@ -181,25 +173,23 @@ export function CategoryManager({ categories }: { categories: CategoryDTO[] }) {
       <ResponsiveSheet
         open={Boolean(deleting)}
         onOpenChange={(o) => !o && setDeleting(null)}
-        title={`Удалить «${deleting?.name ?? ""}»?`}
+        title={t("cat.deleteTitle", { name: deleting?.name ?? "" })}
       >
         {deleting && (
           <div className="grid gap-4">
             {deleting.txCount > 0 ? (
               <>
                 <p className="text-muted-foreground text-sm">
-                  В категории {deleting.txCount} {plural(deleting.txCount)}. Чтобы ничего не
-                  потерялось, выберите, куда их перенести. Если категория просто больше не нужна —
-                  лучше отправьте её в архив.
+                  {t("cat.inUse", { count: t.tp("cat.txCount", deleting.txCount) })}
                 </p>
                 <div className="grid gap-1.5">
-                  <Label htmlFor="move-to">Перенести операции в</Label>
+                  <Label htmlFor="move-to">{t("cat.moveTo")}</Label>
                   <NativeSelect
                     id="move-to"
                     value={moveTo}
                     onChange={(e) => setMoveTo(e.target.value)}
                   >
-                    <option value="">Выберите категорию</option>
+                    <option value="">{t("cat.pick")}</option>
                     {targets.map((c) => (
                       <option key={c.id} value={c.id}>
                         {c.name}
@@ -209,9 +199,7 @@ export function CategoryManager({ categories }: { categories: CategoryDTO[] }) {
                 </div>
               </>
             ) : (
-              <p className="text-muted-foreground text-sm">
-                В категории нет операций, удаление безопасно.
-              </p>
+              <p className="text-muted-foreground text-sm">{t("cat.safe")}</p>
             )}
             <Button
               variant="destructive"
@@ -220,15 +208,15 @@ export function CategoryManager({ categories }: { categories: CategoryDTO[] }) {
                 startTransition(async () => {
                   const res = await deleteCategory(deleting.id, moveTo || undefined);
                   if (!res.ok) {
-                    toast.error(res.error);
+                    toast.error(t.dyn(res.error));
                     return;
                   }
-                  toast.success("Категория удалена");
+                  toast.success(t("cat.deleted"));
                   setDeleting(null);
                 })
               }
             >
-              <Trash2 /> {deleting.txCount > 0 ? "Перенести и удалить" : "Удалить"}
+              <Trash2 /> {deleting.txCount > 0 ? t("cat.moveAndDelete") : t("common.delete")}
             </Button>
           </div>
         )}

@@ -2,6 +2,9 @@
 
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+import { localePath } from "@/lib/i18n/config";
+import { getLocale } from "@/lib/i18n/server";
+import { dictionaries } from "@/lib/i18n/dictionaries";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { DEFAULT_CATEGORIES } from "@/lib/design/category-palette";
@@ -13,22 +16,24 @@ export type ActionResult = { ok: false; error: string; fieldErrors?: Record<stri
 /** Завершение онбординга (tasks.md 6.4): валюта, категории и первый счёт — одной транзакцией БД. */
 export async function completeOnboarding(input: OnboardingInput): Promise<ActionResult> {
   const user = await requireUser({ allowNotOnboarded: true });
-  if (user.onboarded) redirect("/dashboard");
+  if (user.onboarded) redirect(localePath(await getLocale(), "/dashboard"));
 
   const parsed = onboardingSchema.safeParse(input);
   if (!parsed.success) {
     const fieldErrors: Record<string, string> = {};
     for (const issue of parsed.error.issues) fieldErrors[issue.path.join(".")] ??= issue.message;
-    return { ok: false, error: "Проверьте введённые данные", fieldErrors };
+    return { ok: false, error: "err.checkInput", fieldErrors };
   }
   const { currency, timezone, categoryKeys, wallet } = parsed.data;
   const categories = DEFAULT_CATEGORIES.filter((c) => categoryKeys.includes(c.key));
+  const dict = dictionaries[await getLocale()];
 
   await db.$transaction([
     db.category.createMany({
       data: categories.map((c, i) => ({
         userId: user.id,
-        name: c.name,
+        // Название — на языке интерфейса пользователя
+        name: dict.defaultCats[c.key as keyof typeof dict.defaultCats] ?? c.name,
         type: c.type,
         icon: c.icon,
         color: c.color,
@@ -49,5 +54,5 @@ export async function completeOnboarding(input: OnboardingInput): Promise<Action
 
   // Сессия кэшируется в cookie — перечитываем из БД, чтобы флаг onboarded обновился сразу
   await auth.api.getSession({ headers: await headers(), query: { disableCookieCache: true } });
-  redirect("/dashboard");
+  redirect(localePath(await getLocale(), "/dashboard"));
 }

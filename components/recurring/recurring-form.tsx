@@ -14,6 +14,7 @@ import { describeSchedule, type Frequency } from "@/lib/recurring";
 import type { CategoryDTO, WalletDTO } from "@/lib/queries/finance";
 import type { RecurringDTO } from "@/lib/queries/planning";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/components/i18n/locale-provider";
 
 /** Создание/редактирование регулярной операции (tasks.md 15.4). */
 export function RecurringForm({
@@ -29,6 +30,7 @@ export function RecurringForm({
   initial: RecurringDTO | null;
   onDone: () => void;
 }) {
+  const { t, locale } = useI18n();
   const [type, setType] = useState<"INCOME" | "EXPENSE">(initial?.type ?? "EXPENSE");
   const [amount, setAmount] = useState(initial ? minorToInput(initial.amount) : "");
   const [categoryId, setCategoryId] = useState(initial?.categoryId ?? "");
@@ -48,7 +50,7 @@ export function RecurringForm({
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!categoryId) return setErrors({ categoryId: "Выберите категорию" });
+    if (!categoryId) return setErrors({ categoryId: "v.category" });
     startTransition(async () => {
       const r = await saveRecurring(
         {
@@ -68,8 +70,8 @@ export function RecurringForm({
         setErrors(r.fieldErrors ?? { form: r.error });
         return;
       }
-      toast.success(initial ? "Регулярный платёж изменён" : "Регулярный платёж создан", {
-        description: nextDate <= today ? "Операции за наступившие даты уже добавлены" : undefined,
+      toast.success(initial ? t("rec.edited") : t("rec.created"), {
+        description: nextDate <= today ? t("rec.pastAdded") : undefined,
       });
       onDone();
     });
@@ -78,19 +80,27 @@ export function RecurringForm({
   return (
     <form onSubmit={submit} noValidate className="grid gap-4">
       <Segmented
-        label="Тип"
+        label={t("common.type")}
         value={type}
         onChange={(t) => {
           setType(t);
           setCategoryId("");
         }}
         options={[
-          { value: "EXPENSE", label: "Расход", activeClass: "bg-expense text-expense-foreground" },
-          { value: "INCOME", label: "Доход", activeClass: "bg-income text-income-foreground" },
+          {
+            value: "EXPENSE",
+            label: t("common.expenseOne"),
+            activeClass: "bg-expense text-expense-foreground",
+          },
+          {
+            value: "INCOME",
+            label: t("common.incomeOne"),
+            activeClass: "bg-income text-income-foreground",
+          },
         ]}
       />
       <div className="grid gap-1.5">
-        <Label htmlFor="rr-amount">Сумма</Label>
+        <Label htmlFor="rr-amount">{t("common.amount")}</Label>
         <Input
           id="rr-amount"
           inputMode="decimal"
@@ -100,13 +110,15 @@ export function RecurringForm({
           aria-invalid={Boolean(errors.amount)}
           className="num h-14 text-2xl font-bold"
         />
-        {errors.amount && <p className="text-expense text-[13px]">{errors.amount}</p>}
+        {errors.amount && <p className="text-expense text-[13px]">{t.dyn(errors.amount)}</p>}
       </div>
       <fieldset>
-        <legend className="text-muted-foreground mb-1.5 text-[13px] font-medium">Категория</legend>
+        <legend className="text-muted-foreground mb-1.5 text-[13px] font-medium">
+          {t("common.category")}
+        </legend>
         <div
           role="radiogroup"
-          aria-label="Категория"
+          aria-label={t("common.category")}
           className="grid max-h-40 grid-cols-3 gap-1.5 overflow-y-auto p-0.5 sm:grid-cols-4"
         >
           {visible.map((c) => (
@@ -128,23 +140,25 @@ export function RecurringForm({
             </button>
           ))}
         </div>
-        {errors.categoryId && <p className="text-expense mt-1 text-[13px]">{errors.categoryId}</p>}
+        {errors.categoryId && (
+          <p className="text-expense mt-1 text-[13px]">{t.dyn(errors.categoryId)}</p>
+        )}
       </fieldset>
       <div className="grid grid-cols-2 gap-3">
         <div className="grid gap-1.5">
-          <Label htmlFor="rr-freq">Как часто</Label>
+          <Label htmlFor="rr-freq">{t("rec.howOften")}</Label>
           <NativeSelect
             id="rr-freq"
             value={frequency}
             onChange={(e) => setFrequency(e.target.value as Frequency)}
           >
-            <option value="WEEKLY">Неделя</option>
-            <option value="MONTHLY">Месяц</option>
-            <option value="YEARLY">Год</option>
+            <option value="WEEKLY">{t("rec.week")}</option>
+            <option value="MONTHLY">{t("rec.month")}</option>
+            <option value="YEARLY">{t("rec.year")}</option>
           </NativeSelect>
         </div>
         <div className="grid gap-1.5">
-          <Label htmlFor="rr-int">Каждые</Label>
+          <Label htmlFor="rr-int">{t("rec.every")}</Label>
           <NativeSelect id="rr-int" value={interval} onChange={(e) => setInterval(e.target.value)}>
             {Array.from({ length: 12 }, (_, i) => (
               <option key={i + 1} value={i + 1}>
@@ -154,7 +168,7 @@ export function RecurringForm({
           </NativeSelect>
         </div>
         <div className="grid gap-1.5">
-          <Label htmlFor="rr-next">{initial ? "Следующий раз" : "Первый раз"}</Label>
+          <Label htmlFor="rr-next">{initial ? t("rec.nextTime") : t("rec.firstTime")}</Label>
           <Input
             id="rr-next"
             type="date"
@@ -163,7 +177,7 @@ export function RecurringForm({
           />
         </div>
         <div className="grid gap-1.5">
-          <Label htmlFor="rr-end">До (необязательно)</Label>
+          <Label htmlFor="rr-end">{t("rec.until")}</Label>
           <Input
             id="rr-end"
             type="date"
@@ -176,14 +190,14 @@ export function RecurringForm({
       </div>
       {nextDate && (
         <p className="text-muted-foreground -mt-1 text-[13px]">
-          {describeSchedule(nextDate, frequency, Number(interval))}
-          {nextDate < today && " · прошедшие даты будут добавлены сразу"}
+          {describeSchedule(nextDate, frequency, Number(interval), locale)}
+          {nextDate < today && t("rec.pastWillAdd")}
         </p>
       )}
-      {errors.endDate && <p className="text-expense text-[13px]">{errors.endDate}</p>}
+      {errors.endDate && <p className="text-expense text-[13px]">{t.dyn(errors.endDate)}</p>}
       <div className="grid grid-cols-2 gap-3">
         <div className="grid gap-1.5">
-          <Label htmlFor="rr-wallet">Счёт</Label>
+          <Label htmlFor="rr-wallet">{t("common.wallet")}</Label>
           <NativeSelect
             id="rr-wallet"
             value={walletId}
@@ -199,11 +213,11 @@ export function RecurringForm({
           </NativeSelect>
         </div>
         <div className="grid gap-1.5">
-          <Label htmlFor="rr-note">Комментарий</Label>
+          <Label htmlFor="rr-note">{t("common.note")}</Label>
           <Input
             id="rr-note"
             maxLength={200}
-            placeholder="Аренда, Netflix…"
+            placeholder={t("rec.notePlaceholder")}
             value={note}
             onChange={(e) => setNote(e.target.value)}
           />
@@ -211,11 +225,11 @@ export function RecurringForm({
       </div>
       {errors.form && (
         <p role="alert" className="bg-expense/10 text-expense rounded-sm px-3 py-2 text-sm">
-          {errors.form}
+          {t.dyn(errors.form)}
         </p>
       )}
       <Button type="submit" disabled={pending}>
-        {pending ? "Сохраняем…" : initial ? "Сохранить" : "Создать"}
+        {pending ? t("common.saving") : initial ? t("common.save") : t("common.create")}
       </Button>
     </form>
   );

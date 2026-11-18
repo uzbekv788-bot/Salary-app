@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { useLocaleRouter } from "@/components/i18n/use-locale-router";
 import { toast } from "sonner";
 import { Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -11,9 +11,11 @@ import { Label } from "@/components/ui/label";
 import { ResponsiveSheet } from "@/components/ui/responsive-sheet";
 import { deleteAccount } from "@/lib/actions/account";
 import { authClient } from "@/lib/auth-client";
+import { useI18n } from "@/components/i18n/locale-provider";
 
 export function DangerZone({ email }: { email: string }) {
-  const router = useRouter();
+  const { t } = useI18n();
+  const router = useLocaleRouter();
   const [open, setOpen] = useState(false);
   const [value, setValue] = useState("");
   const [pending, startTransition] = useTransition();
@@ -21,20 +23,18 @@ export function DangerZone({ email }: { email: string }) {
     <Card className="border-expense/30">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <p className="font-semibold">Удалить аккаунт</p>
-          <p className="text-muted-foreground text-sm">
-            Все операции, категории и счета будут удалены навсегда.
-          </p>
+          <p className="font-semibold">{t("settings.deleteAccount")}</p>
+          <p className="text-muted-foreground text-sm">{t("settings.deleteAccountHint")}</p>
         </div>
         <Button variant="destructive" size="sm" onClick={() => setOpen(true)}>
-          <Trash2 /> Удалить
+          <Trash2 /> {t("common.delete")}
         </Button>
       </div>
       <ResponsiveSheet
         open={open}
         onOpenChange={setOpen}
-        title="Удалить аккаунт навсегда?"
-        description="Это действие нельзя отменить. Советуем сначала скачать данные в CSV."
+        title={t("settings.deleteForever")}
+        description={t("settings.deleteForeverHint")}
       >
         <form
           className="grid gap-4"
@@ -43,7 +43,7 @@ export function DangerZone({ email }: { email: string }) {
             startTransition(async () => {
               const r = await deleteAccount(value);
               if (!r.ok) {
-                toast.error(r.error);
+                toast.error(t.dyn(r.error));
                 return;
               }
               await authClient.signOut().catch(() => {});
@@ -53,7 +53,7 @@ export function DangerZone({ email }: { email: string }) {
           }}
         >
           <div className="grid gap-1.5">
-            <Label htmlFor="del-email">Для подтверждения введите {email}</Label>
+            <Label htmlFor="del-email">{t("settings.confirmEmail", { email })}</Label>
             <Input
               id="del-email"
               type="email"
@@ -67,7 +67,7 @@ export function DangerZone({ email }: { email: string }) {
             variant="destructive"
             disabled={pending || value.trim().toLowerCase() !== email.toLowerCase()}
           >
-            {pending ? "Удаляем…" : "Удалить навсегда"}
+            {pending ? t("settings.deleting") : t("settings.deleteForeverBtn")}
           </Button>
         </form>
       </ResponsiveSheet>

@@ -10,3 +10,11 @@ export const CURRENCIES = [
 ] as const;
 
 export const CURRENCY_CODES = CURRENCIES.map((c) => c.code) as [string, ...string[]];
+
+/** Символ валюты на языке интерфейса: у сума кириллический символ только в русском. */
+export function currencySymbol(code: string, locale: string): string {
+  const c = CURRENCIES.find((x) => x.code === code);
+  if (!c) return code;
+  if (code === "UZS" && locale !== "ru") return "soʻm";
+  return c.symbol;
+}

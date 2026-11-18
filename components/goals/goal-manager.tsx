@@ -32,10 +32,9 @@ import {
   categoryColorVar,
   type CategoryColor,
 } from "@/lib/design/category-palette";
-import { dateWithYear, shortDate } from "@/lib/format-date";
+import { useI18n } from "@/components/i18n/locale-provider";
 import { formatAmountInput, minorToInput } from "@/lib/format-input";
 import { monthlyNeeded } from "@/lib/goals";
-import { formatMoney } from "@/lib/money";
 import type { GoalDTO } from "@/lib/queries/planning";
 import { useDesktopAutoFocus } from "@/lib/hooks/use-desktop-autofocus";
 import { cn } from "@/lib/utils";
@@ -65,6 +64,7 @@ export function GoalManager({
   today: string;
   currency: string;
 }) {
+  const { t, fmt } = useI18n();
   const [form, setForm] = useState<{ open: boolean; goal: GoalDTO | null }>({
     open: false,
     goal: null,
@@ -93,27 +93,33 @@ export function GoalManager({
               >
                 {g.completedAt ? (
                   <>
-                    <PartyPopper className="size-3.5" aria-hidden /> Цель достигнута
+                    <PartyPopper className="size-3.5" aria-hidden /> {t("goal.reached")}
                   </>
                 ) : g.deadline ? (
                   <>
                     <CalendarClock className="size-3.5" aria-hidden />{" "}
-                    {overdue ? "Срок прошёл" : "до"} {dateWithYear(g.deadline, today)}
+                    {overdue
+                      ? t("goal.overdue", { date: fmt.shortYear(g.deadline, today) })
+                      : t("goal.until", { date: fmt.shortYear(g.deadline, today) })}
                   </>
                 ) : (
-                  "Без срока"
+                  t("goal.noDeadline")
                 )}
               </p>
             </div>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon-sm" aria-label={`Действия: ${g.name}`}>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label={t("cat.actions", { name: g.name })}
+                >
                   <MoreHorizontal />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuItem onSelect={() => setForm({ open: true, goal: g })}>
-                  <Pencil /> Изменить
+                  <Pencil /> {t("common.edit")}
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   className="text-expense"
@@ -121,12 +127,12 @@ export function GoalManager({
                   onSelect={() =>
                     startTransition(async () => {
                       const r = await deleteGoal(g.id);
-                      if (r.ok) toast.success("Цель удалена");
-                      else toast.error(r.error);
+                      if (r.ok) toast.success(t("goal.deleted"));
+                      else toast.error(t.dyn(r.error));
                     })
                   }
                 >
-                  <Trash2 className="!text-expense" /> Удалить
+                  <Trash2 className="!text-expense" /> {t("common.delete")}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -146,14 +152,17 @@ export function GoalManager({
           </div>
           <div className="flex flex-wrap items-baseline justify-between gap-2 text-sm">
             <span className="num">
-              <b>{formatMoney(g.saved, currency)}</b>{" "}
+              <b>{fmt.money(g.saved, currency)}</b>{" "}
               <span className="text-muted-foreground">
-                из {formatMoney(g.target, currency)} · {Math.floor(pct * 100)}%
+                {t("goal.ofTarget", {
+                  target: fmt.money(g.target, currency),
+                  pct: Math.floor(pct * 100),
+                })}
               </span>
             </span>
             {need && (
               <span className="num text-muted-foreground">
-                ≈ {formatMoney(need.perMonth, currency)} в месяц
+                {t("goal.perMonth", { amount: fmt.money(need.perMonth, currency) })}
               </span>
             )}
           </div>
@@ -163,7 +172,7 @@ export function GoalManager({
             className="justify-self-start"
             onClick={() => setMoney(g)}
           >
-            <Plus /> Пополнить / снять
+            <Plus /> {t("goal.addOrWithdraw")}
           </Button>
         </Card>
       </li>
@@ -173,22 +182,15 @@ export function GoalManager({
   return (
     <>
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-        <p className="text-muted-foreground max-w-xl text-sm">
-          Откладывайте на большие покупки и подушку безопасности — Salary подскажет, сколько нужно в
-          месяц.
-        </p>
+        <p className="text-muted-foreground max-w-xl text-sm">{t("goal.lead")}</p>
         <Button onClick={() => setForm({ open: true, goal: null })}>
-          <Plus /> Новая цель
+          <Plus /> {t("goal.new")}
         </Button>
       </div>
 
       {goals.length === 0 ? (
         <Card>
-          <EmptyState
-            icon={Target}
-            title="Целей пока нет"
-            description="Например: «Отпуск — 150 000 ₽ к июню». Пополняйте понемногу и следите за прогрессом."
-          />
+          <EmptyState icon={Target} title={t("goal.empty")} description={t("goal.emptyText")} />
         </Card>
       ) : (
         <div className="grid gap-5">
@@ -198,7 +200,7 @@ export function GoalManager({
           {done.length > 0 && (
             <section>
               <h2 className="text-muted-foreground mb-2 text-sm font-semibold">
-                Достигнутые ({done.length})
+                {t("goal.done", { n: done.length })}
               </h2>
               <ul className="grid gap-3 sm:gap-5 md:grid-cols-2">{done.map(card)}</ul>
             </section>
@@ -209,7 +211,7 @@ export function GoalManager({
       <ResponsiveSheet
         open={form.open}
         onOpenChange={(open) => setForm((f) => ({ ...f, open }))}
-        title={form.goal ? "Изменить цель" : "Новая цель"}
+        title={form.goal ? t("goal.editTitle") : t("goal.new")}
       >
         <GoalForm
           key={`${form.goal?.id ?? "new"}-${form.open}`}
@@ -223,7 +225,10 @@ export function GoalManager({
         title={money ? money.name : ""}
         description={
           money
-            ? `Накоплено ${formatMoney(money.saved, currency)} из ${formatMoney(money.target, currency)}`
+            ? t("goal.savedOf", {
+                saved: fmt.money(money.saved, currency),
+                target: fmt.money(money.target, currency),
+              })
             : undefined
         }
       >
@@ -241,6 +246,7 @@ export function GoalManager({
 }
 
 function GoalForm({ initial, onDone }: { initial: GoalDTO | null; onDone: () => void }) {
+  const { t } = useI18n();
   const [name, setName] = useState(initial?.name ?? "");
   const [target, setTarget] = useState(initial ? minorToInput(initial.target) : "");
   const [deadline, setDeadline] = useState(initial?.deadline ?? "");
@@ -261,27 +267,27 @@ function GoalForm({ initial, onDone }: { initial: GoalDTO | null; onDone: () => 
             setErrors(r.fieldErrors ?? { form: r.error });
             return;
           }
-          toast.success(initial ? "Цель изменена" : "Цель создана");
+          toast.success(initial ? t("goal.edited") : t("goal.created"));
           onDone();
         });
       }}
     >
       <div className="grid gap-1.5">
-        <Label htmlFor="g-name">Название</Label>
+        <Label htmlFor="g-name">{t("common.name")}</Label>
         <Input
           id="g-name"
           ref={focusRef}
           value={name}
           maxLength={40}
-          placeholder="Отпуск"
+          placeholder={t("goal.namePlaceholder")}
           onChange={(e) => setName(e.target.value)}
           aria-invalid={Boolean(errors.name)}
         />
-        {errors.name && <p className="text-expense text-[13px]">{errors.name}</p>}
+        {errors.name && <p className="text-expense text-[13px]">{t.dyn(errors.name)}</p>}
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div className="grid gap-1.5">
-          <Label htmlFor="g-target">Сколько нужно</Label>
+          <Label htmlFor="g-target">{t("goal.target")}</Label>
           <Input
             id="g-target"
             inputMode="decimal"
@@ -291,10 +297,10 @@ function GoalForm({ initial, onDone }: { initial: GoalDTO | null; onDone: () => 
             className="num"
             aria-invalid={Boolean(errors.target)}
           />
-          {errors.target && <p className="text-expense text-[13px]">{errors.target}</p>}
+          {errors.target && <p className="text-expense text-[13px]">{t.dyn(errors.target)}</p>}
         </div>
         <div className="grid gap-1.5">
-          <Label htmlFor="g-deadline">К какой дате</Label>
+          <Label htmlFor="g-deadline">{t("goal.deadline")}</Label>
           <Input
             id="g-deadline"
             type="date"
@@ -305,9 +311,9 @@ function GoalForm({ initial, onDone }: { initial: GoalDTO | null; onDone: () => 
       </div>
       <fieldset>
         <legend className="text-muted-foreground mb-2 text-[13px] font-medium">
-          Иконка и цвет
+          {t("goal.iconColor")}
         </legend>
-        <div role="radiogroup" aria-label="Иконка" className="mb-3 flex flex-wrap gap-1">
+        <div role="radiogroup" aria-label={t("cat.icon")} className="mb-3 flex flex-wrap gap-1">
           {GOAL_ICONS.filter((i) => i in CATEGORY_ICONS).map((i) => (
             <button
               key={i}
@@ -325,7 +331,7 @@ function GoalForm({ initial, onDone }: { initial: GoalDTO | null; onDone: () => 
             </button>
           ))}
         </div>
-        <div role="radiogroup" aria-label="Цвет" className="flex flex-wrap gap-2">
+        <div role="radiogroup" aria-label={t("cat.color")} className="flex flex-wrap gap-2">
           {CATEGORY_COLORS.map((c) => (
             <button
               key={c}
@@ -345,11 +351,11 @@ function GoalForm({ initial, onDone }: { initial: GoalDTO | null; onDone: () => 
       </fieldset>
       {errors.form && (
         <p role="alert" className="bg-expense/10 text-expense rounded-sm px-3 py-2 text-sm">
-          {errors.form}
+          {t.dyn(errors.form)}
         </p>
       )}
       <Button type="submit" disabled={pending}>
-        {pending ? "Сохраняем…" : initial ? "Сохранить" : "Создать цель"}
+        {pending ? t("common.saving") : initial ? t("common.save") : t("goal.createGoal")}
       </Button>
     </form>
   );
@@ -366,6 +372,7 @@ function ContributionForm({
   currency: string;
   onDone: () => void;
 }) {
+  const { t, fmt } = useI18n();
   const [direction, setDirection] = useState<"IN" | "OUT">("IN");
   const [amount, setAmount] = useState("");
   const [date, setDate] = useState(today);
@@ -386,24 +393,24 @@ function ContributionForm({
               return;
             }
             if (r.data.justCompleted)
-              toast.success(`Цель «${goal.name}» достигнута! 🎉`, { duration: 8000 });
-            else toast.success(direction === "IN" ? "Отложено" : "Снято с цели");
+              toast.success(t("goal.congrats", { name: goal.name }), { duration: 8000 });
+            else toast.success(direction === "IN" ? t("goal.putAside") : t("goal.withdrawn"));
             onDone();
           });
         }}
       >
         <Segmented
-          label="Действие"
+          label={t("goal.action")}
           value={direction}
           onChange={setDirection}
           options={[
-            { value: "IN", label: "Пополнить" },
-            { value: "OUT", label: "Снять" },
+            { value: "IN", label: t("goal.deposit") },
+            { value: "OUT", label: t("goal.withdraw") },
           ]}
         />
         <div className="grid grid-cols-[1fr_auto] gap-3">
           <div className="grid gap-1.5">
-            <Label htmlFor="c-amount">Сумма</Label>
+            <Label htmlFor="c-amount">{t("common.amount")}</Label>
             <Input
               id="c-amount"
               ref={focusRef}
@@ -416,7 +423,7 @@ function ContributionForm({
             />
           </div>
           <div className="grid gap-1.5">
-            <Label htmlFor="c-date">Дата</Label>
+            <Label htmlFor="c-date">{t("common.date")}</Label>
             <Input
               id="c-date"
               type="date"
@@ -428,25 +435,27 @@ function ContributionForm({
         </div>
         {(errors.amount || errors.form) && (
           <p role="alert" className="text-expense text-[13px]">
-            {errors.amount || errors.form}
+            {t.dyn(errors.amount || errors.form)}
           </p>
         )}
         <Button type="submit" disabled={pending}>
-          {pending ? "Сохраняем…" : direction === "IN" ? "Отложить" : "Снять"}
+          {pending ? t("common.saving") : direction === "IN" ? t("goal.save") : t("goal.withdraw")}
         </Button>
       </form>
       {goal.contributions.length > 0 && (
         <div>
-          <p className="text-muted-foreground mb-1.5 text-[13px] font-medium">Последние движения</p>
+          <p className="text-muted-foreground mb-1.5 text-[13px] font-medium">
+            {t("goal.history")}
+          </p>
           <ul className="grid gap-1 text-sm">
             {goal.contributions.map((c) => (
               <li key={c.id} className="flex justify-between gap-3">
                 <span className="text-muted-foreground">
-                  {shortDate(c.date)}
+                  {fmt.short(c.date)}
                   {c.note && ` · ${c.note}`}
                 </span>
                 <span className="num font-semibold">
-                  {formatMoney(c.amount, currency, { signed: true })}
+                  {fmt.money(c.amount, currency, { signed: true })}
                 </span>
               </li>
             ))}

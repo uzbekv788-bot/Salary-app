@@ -11,15 +11,16 @@ import { NativeSelect } from "@/components/ui/native-select";
 import { ResponsiveSheet } from "@/components/ui/responsive-sheet";
 import { importTransactions } from "@/lib/actions/account";
 import { guessMapping, mapRow, type ImportMapping } from "@/lib/csv";
-import { formatMoney } from "@/lib/money";
 import type { WalletDTO } from "@/lib/queries/finance";
+import { useI18n } from "@/components/i18n/locale-provider";
+import type { TKey } from "@/lib/i18n/core";
 
-const FIELDS: { key: keyof ImportMapping; label: string; required?: boolean }[] = [
-  { key: "date", label: "Дата", required: true },
-  { key: "amount", label: "Сумма", required: true },
-  { key: "type", label: "Тип (доход/расход)" },
-  { key: "category", label: "Категория" },
-  { key: "note", label: "Комментарий" },
+const FIELDS: { key: keyof ImportMapping; label: TKey; required?: boolean }[] = [
+  { key: "date", label: "common.date", required: true },
+  { key: "amount", label: "common.amount", required: true },
+  { key: "type", label: "settings.typeColumn" },
+  { key: "category", label: "common.category" },
+  { key: "note", label: "common.note" },
 ];
 
 /** Экспорт и импорт CSV (tasks.md 12.2–12.3). */
@@ -32,6 +33,7 @@ export function DataSection({
   currency: string;
   year: string;
 }) {
+  const { t, fmt } = useI18n();
   const [open, setOpen] = useState(false);
   const [file, setFile] = useState<{
     name: string;
@@ -49,55 +51,51 @@ export function DataSection({
       skipEmptyLines: "greedy",
       complete: (res) => {
         const headers = (res.meta.fields ?? []).filter(Boolean);
-        if (!headers.length || !res.data.length) return toast.error("Файл пустой или это не CSV");
+        if (!headers.length || !res.data.length) return toast.error(t("settings.emptyFile"));
         setFile({ name: f.name, headers, rows: res.data.slice(0, 5000) });
         setMapping(guessMapping(headers));
         setOpen(true);
       },
-      error: () => toast.error("Не удалось прочитать файл"),
+      error: () => toast.error(t("settings.readFailed")),
     });
   };
 
   const ready = Boolean(mapping.date && mapping.amount);
   const mapped = file && ready ? file.rows.map((r) => mapRow(r, mapping as ImportMapping)) : [];
   const good = mapped.flatMap((m) => (m.ok ? [m.row] : []));
-  const bad = mapped.filter((m) => !m.ok) as { ok: false; error: string }[];
+  const bad = mapped.filter((m) => !m.ok) as { ok: false; error: string; value: string }[];
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Данные</CardTitle>
+        <CardTitle>{t("settings.data")}</CardTitle>
       </CardHeader>
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="bg-foreground/4 grid gap-2 rounded-md p-4">
-          <p className="font-semibold">Скачать операции</p>
-          <p className="text-muted-foreground text-sm">
-            CSV-файл открывается в Excel и Google Таблицах.
-          </p>
+          <p className="font-semibold">{t("settings.download")}</p>
+          <p className="text-muted-foreground text-sm">{t("settings.downloadHint")}</p>
           <div className="flex flex-wrap gap-2">
             <Button asChild variant="secondary" size="sm">
               <a href={`/api/export?from=${year}-01-01&to=${year}-12-31`} download>
-                <Download /> За {year}
+                <Download /> {t("settings.forYear", { year })}
               </a>
             </Button>
             <Button asChild variant="secondary" size="sm">
               <a href="/api/export" download>
-                <Download /> За всё время
+                <Download /> {t("settings.allTime")}
               </a>
             </Button>
           </div>
         </div>
         <div className="bg-foreground/4 grid gap-2 rounded-md p-4">
-          <p className="font-semibold">Загрузить из файла</p>
-          <p className="text-muted-foreground text-sm">
-            Выписка банка или файл, скачанный из Salary.
-          </p>
+          <p className="font-semibold">{t("settings.upload")}</p>
+          <p className="text-muted-foreground text-sm">{t("settings.uploadHint")}</p>
           <input
             ref={inputRef}
             type="file"
             accept=".csv,text/csv"
             className="sr-only"
-            aria-label="CSV-файл"
+            aria-label={t("settings.csvFile")}
             onChange={(e) => {
               const f = e.target.files?.[0];
               if (f) onFile(f);
@@ -110,7 +108,7 @@ export function DataSection({
             className="justify-self-start"
             onClick={() => inputRef.current?.click()}
           >
-            <FileUp /> Выбрать CSV
+            <FileUp /> {t("settings.pickCsv")}
           </Button>
         </div>
       </div>
@@ -118,19 +116,21 @@ export function DataSection({
       <ResponsiveSheet
         open={open}
         onOpenChange={setOpen}
-        title="Импорт операций"
-        description={file ? `${file.name} · строк: ${file.rows.length}` : undefined}
+        title={t("settings.importTitle")}
+        description={
+          file ? t("settings.importFileInfo", { name: file.name, n: file.rows.length }) : undefined
+        }
       >
         {file && (
           <div className="grid gap-4">
             <fieldset className="grid grid-cols-2 gap-3">
               <legend className="text-muted-foreground mb-2 text-[13px] font-medium">
-                Какая колонка за что отвечает
+                {t("settings.mapping")}
               </legend>
               {FIELDS.map((f) => (
                 <div key={f.key} className="grid gap-1">
                   <Label htmlFor={`m-${f.key}`}>
-                    {f.label}
+                    {t(f.label)}
                     {f.required && " *"}
                   </Label>
                   <NativeSelect
@@ -140,7 +140,7 @@ export function DataSection({
                       setMapping((m) => ({ ...m, [f.key]: e.target.value || undefined }))
                     }
                   >
-                    <option value="">{f.required ? "Выберите" : "—"}</option>
+                    <option value="">{f.required ? t("settings.choose") : "—"}</option>
                     {file.headers.map((h) => (
                       <option key={h} value={h}>
                         {h}
@@ -150,7 +150,7 @@ export function DataSection({
                 </div>
               ))}
               <div className="grid gap-1">
-                <Label htmlFor="m-wallet">На счёт</Label>
+                <Label htmlFor="m-wallet">{t("settings.toWallet")}</Label>
                 <NativeSelect
                   id="m-wallet"
                   value={walletId}
@@ -173,9 +173,9 @@ export function DataSection({
                   <table className="num w-full text-left text-[13px]">
                     <thead className="bg-glass-strong text-muted-foreground sticky top-0 backdrop-blur">
                       <tr>
-                        <th className="p-2 font-medium">Дата</th>
-                        <th className="p-2 font-medium">Категория</th>
-                        <th className="p-2 text-right font-medium">Сумма</th>
+                        <th className="p-2 font-medium">{t("common.date")}</th>
+                        <th className="p-2 font-medium">{t("common.category")}</th>
+                        <th className="p-2 text-right font-medium">{t("common.amount")}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -183,11 +183,13 @@ export function DataSection({
                         <tr key={i} className="border-foreground/6 border-t">
                           <td className="p-2 whitespace-nowrap">{r.date}</td>
                           <td className="max-w-40 truncate p-2">
-                            {r.category ?? <span className="text-muted-foreground">Прочее</span>}
+                            {r.category ?? (
+                              <span className="text-muted-foreground">{t("settings.other")}</span>
+                            )}
                             {r.note && <span className="text-muted-foreground"> · {r.note}</span>}
                           </td>
                           <td className="p-2 text-right whitespace-nowrap">
-                            {formatMoney(r.type === "INCOME" ? r.amount : -r.amount, currency, {
+                            {fmt.money(r.type === "INCOME" ? r.amount : -r.amount, currency, {
                               signed: true,
                             })}
                           </td>
@@ -197,11 +199,14 @@ export function DataSection({
                   </table>
                 </div>
                 <p className="text-sm">
-                  Готово к импорту: <b>{good.length}</b>
+                  {t("settings.ready")} <b>{good.length}</b>
                   {bad.length > 0 && (
                     <span className="text-warning ml-2 inline-flex items-center gap-1">
-                      <TriangleAlert className="size-4" aria-hidden /> пропустим {bad.length}{" "}
-                      (например: {bad[0].error})
+                      <TriangleAlert className="size-4" aria-hidden />{" "}
+                      {t("settings.skip", {
+                        n: bad.length,
+                        example: t.dyn(bad[0].error, { value: bad[0].value }),
+                      })}
                     </span>
                   )}
                 </p>
@@ -214,18 +219,23 @@ export function DataSection({
                 startTransition(async () => {
                   const r = await importTransactions({ walletId, rows: good });
                   if (!r.ok) {
-                    toast.error(r.fieldErrors ? Object.values(r.fieldErrors)[0] : r.error);
+                    toast.error(t.dyn(r.fieldErrors ? Object.values(r.fieldErrors)[0] : r.error));
                     return;
                   }
                   toast.success(
-                    `Импортировано операций: ${r.data.imported}${r.data.createdCategories ? `, новых категорий: ${r.data.createdCategories}` : ""}`,
+                    r.data.createdCategories
+                      ? t("settings.importedWithCats", {
+                          n: r.data.imported,
+                          c: r.data.createdCategories,
+                        })
+                      : t("settings.imported", { n: r.data.imported }),
                   );
                   setOpen(false);
                   setFile(null);
                 })
               }
             >
-              {pending ? "Импортируем…" : `Импортировать ${good.length}`}
+              {pending ? t("settings.importing") : t("settings.importN", { n: good.length })}
             </Button>
           </div>
         )}

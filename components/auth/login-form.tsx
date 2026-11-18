@@ -1,7 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
+import { useLocaleRouter } from "@/components/i18n/use-locale-router";
+import { useI18n } from "@/components/i18n/locale-provider";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
@@ -11,7 +13,8 @@ import { authClient, authErrorMessage } from "@/lib/auth-client";
 import { loginSchema, safeNext, type LoginInput } from "@/lib/validators/auth";
 
 export function LoginForm({ googleEnabled }: { googleEnabled: boolean }) {
-  const router = useRouter();
+  const router = useLocaleRouter();
+  const { t } = useI18n();
   const next = safeNext(useSearchParams().get("next"));
   const [formError, setFormError] = useState<string | null>(null);
   const {
@@ -33,7 +36,7 @@ export function LoginForm({ googleEnabled }: { googleEnabled: boolean }) {
       <form onSubmit={onSubmit} noValidate className="grid gap-4">
         <FormField
           id="email"
-          label="Email"
+          label={t("auth.email")}
           type="email"
           autoComplete="email"
           placeholder="you@example.com"
@@ -42,7 +45,7 @@ export function LoginForm({ googleEnabled }: { googleEnabled: boolean }) {
         />
         <FormField
           id="password"
-          label="Пароль"
+          label={t("auth.password")}
           type="password"
           autoComplete="current-password"
           error={errors.password?.message}
@@ -50,11 +53,11 @@ export function LoginForm({ googleEnabled }: { googleEnabled: boolean }) {
         />
         {formError && (
           <p role="alert" className="bg-expense/10 text-expense rounded-sm px-3 py-2 text-sm">
-            {formError}
+            {t.dyn(formError)}
           </p>
         )}
         <Button type="submit" className="mt-1 w-full" disabled={isSubmitting}>
-          {isSubmitting ? "Входим…" : "Войти"}
+          {isSubmitting ? t("auth.signingIn") : t("auth.signIn")}
         </Button>
       </form>
       {googleEnabled && <GoogleButton callbackURL={next} />}

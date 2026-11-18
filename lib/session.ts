@@ -4,6 +4,8 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { materializeRecurring } from "@/lib/recurring-server";
+import { localePath } from "@/lib/i18n/config";
+import { getLocale } from "@/lib/i18n/server";
 
 /**
  * Data Access Layer для сессии. Читает cookie запроса, поэтому вызывать
@@ -24,9 +26,9 @@ export type CurrentUser = {
 /** Текущий пользователь или редирект на вход. Без онбординга — редирект на /onboarding. */
 export async function requireUser({ allowNotOnboarded = false } = {}): Promise<CurrentUser> {
   const session = await getSession();
-  if (!session) redirect("/login");
+  if (!session) redirect(localePath(await getLocale(), "/login"));
   const u = session.user;
-  if (!u.onboarded && !allowNotOnboarded) redirect("/onboarding");
+  if (!u.onboarded && !allowNotOnboarded) redirect(localePath(await getLocale(), "/onboarding"));
   // Регулярные операции, у которых наступила дата, появляются до того, как страница прочитает данные
   if (u.onboarded) await materializeRecurring(u.id, u.timezone);
   return {

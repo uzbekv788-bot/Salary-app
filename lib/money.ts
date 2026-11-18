@@ -37,6 +37,8 @@ export function fromDb(minor: bigint | null | undefined): number {
 }
 
 type FormatOptions = {
+  /** Тег Intl: "ru-RU" (по умолчанию), "en-US", "uz-Latn-UZ" */
+  intl?: string;
   /** Показывать «+» у положительных сумм (доходы в списках). */
   signed?: boolean;
   /** Всегда показывать копейки. По умолчанию — только если они есть. */
@@ -49,12 +51,12 @@ const MINUS = "−"; // настоящий минус, design.md §3
 export function formatMoney(
   minor: number | bigint,
   currency = "RUB",
-  { signed = false, cents }: FormatOptions = {},
+  { signed = false, cents, intl = "ru-RU" }: FormatOptions = {},
 ): string {
   const value = Number(minor);
   const hasCents = value % MINOR_PER_MAJOR !== 0;
   const digits = (cents ?? hasCents) ? 2 : 0;
-  const formatted = new Intl.NumberFormat("ru-RU", {
+  const formatted = new Intl.NumberFormat(intl, {
     style: "currency",
     currency,
     minimumFractionDigits: digits,
@@ -67,9 +69,9 @@ export function formatMoney(
 }
 
 /** Сокращённая запись для осей графиков: 125000000 → "1,3 млн". */
-export function formatCompact(minor: number | bigint): string {
+export function formatCompact(minor: number | bigint, intl = "ru-RU"): string {
   const value = Number(minor) / MINOR_PER_MAJOR;
-  const formatted = new Intl.NumberFormat("ru-RU", {
+  const formatted = new Intl.NumberFormat(intl, {
     notation: "compact",
     maximumFractionDigits: 1,
   }).format(Math.abs(value));
@@ -88,8 +90,8 @@ export function savingsRate(income: number, expense: number): number | null {
   return (income - expense) / income;
 }
 
-export function formatPercent(fraction: number, { signed = false } = {}): string {
-  const formatted = new Intl.NumberFormat("ru-RU", {
+export function formatPercent(fraction: number, { signed = false, intl = "ru-RU" } = {}): string {
+  const formatted = new Intl.NumberFormat(intl, {
     style: "percent",
     maximumFractionDigits: Math.abs(fraction) < 0.1 ? 1 : 0,
   }).format(Math.abs(fraction));

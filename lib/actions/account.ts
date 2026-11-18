@@ -8,6 +8,8 @@ import { db } from "@/lib/db";
 import { CURRENCY_CODES } from "@/lib/currencies";
 import { DEFAULT_CATEGORIES } from "@/lib/design/category-palette";
 import { requireUser } from "@/lib/session";
+import { getLocale } from "@/lib/i18n/server";
+import { dictionaries } from "@/lib/i18n/dictionaries";
 import { type ActionResult, fail, fromDateStr, fromZod, ok } from "@/lib/actions/utils";
 
 const isTimeZone = (tz: string) => {
@@ -20,9 +22,9 @@ const isTimeZone = (tz: string) => {
 };
 
 const profileSchema = z.object({
-  name: z.string().trim().min(1, "Введите имя").max(60, "Слишком длинное имя"),
+  name: z.string().trim().min(1, "v.name").max(60, "v.nameLong"),
   currency: z.enum(CURRENCY_CODES),
-  timezone: z.string().refine(isTimeZone, "Неизвестный часовой пояс"),
+  timezone: z.string().refine(isTimeZone, "v.timezone"),
 });
 
 /** Профиль (tasks.md 12.1). Валюта меняет только отображение — суммы не конвертируются. */
@@ -51,8 +53,8 @@ const importSchema = z.object({
         note: z.string().max(200).nullable(),
       }),
     )
-    .min(1, "Нет строк для импорта")
-    .max(5000, "За раз можно импортировать до 5000 операций"),
+    .min(1, "err.importEmpty")
+    .max(5000, "err.importTooMany"),
 });
 
 /**
@@ -67,8 +69,9 @@ export async function importTransactions(
   if (!parsed.success) return fromZod(parsed.error);
   const { walletId, rows } = parsed.data;
   const wallet = await db.wallet.findFirst({ where: { id: walletId, userId: user.id } });
-  if (!wallet) return fail("Счёт не найден");
+  if (!wallet) return fail("err.walletNotFound");
 
+  const dict = dictionaries[await getLocale()];
   const existing = await db.category.findMany({
     where: { userId: user.id },
     select: { id: true, name: true, type: true },
@@ -81,7 +84,9 @@ export async function importTransactions(
     const fallback = DEFAULT_CATEGORIES.find(
       (c) => c.type === type && c.icon === "CircleEllipsis",
     )!;
-    const wanted = name || fallback.name;
+    // «Прочее» — на языке интерфейса пользователя
+    const wanted =
+      name || dict.defaultCats[fallback.key as keyof typeof dict.defaultCats] || fallback.name;
     const k = key(type, wanted);
     if (ids.has(k)) return ids.get(k)!;
     const created = await db.category.create({
@@ -122,7 +127,7 @@ export async function importTransactions(
 export async function deleteAccount(confirmEmail: string): Promise<ActionResult<undefined>> {
   const user = await requireUser({ allowNotOnboarded: true });
   if (confirmEmail.trim().toLowerCase() !== user.email.toLowerCase())
-    return fail("Email не совпадает", { email: "Email не совпадает" });
+    return fail("err.emailMismatch", { email: "err.emailMismatch" });
   // Сначала операции: у них связь с категориями/счетами «Restrict»
   await db.$transaction([
     db.transaction.deleteMany({ where: { userId: user.id } }),

@@ -36,13 +36,13 @@ export async function saveRecurring(
     db.wallet.findFirst({ where: { id: rest.walletId, userId: user.id }, select: { id: true } }),
   ]);
   if (!category || category.type !== rest.type)
-    return fail("Выберите категорию", { categoryId: "Выберите категорию" });
-  if (!wallet) return fail("Счёт не найден", { walletId: "Выберите счёт" });
+    return fail("v.category", { categoryId: "v.category" });
+  if (!wallet) return fail("err.walletNotFound", { walletId: "v.wallet" });
 
   const data = { ...rest, amount: BigInt(amount), endDate: endDate ? fromDateStr(endDate) : null };
   if (id) {
     const existing = await db.recurringRule.findFirst({ where: { id, userId: user.id } });
-    if (!existing) return fail("Правило не найдено");
+    if (!existing) return fail("err.ruleNotFound");
     const scheduleChanged =
       existing.frequency !== rest.frequency ||
       existing.interval !== rest.interval ||
@@ -88,7 +88,7 @@ export async function setRecurringActive(
 ): Promise<ActionResult<undefined>> {
   const user = await requireUser();
   const r = await db.recurringRule.findFirst({ where: { id, userId: user.id } });
-  if (!r) return fail("Правило не найдено");
+  if (!r) return fail("err.ruleNotFound");
   if (!active) {
     await db.recurringRule.update({ where: { id }, data: { active: false } });
   } else {
@@ -97,8 +97,7 @@ export async function setRecurringActive(
     let k = r.count;
     while (occurrence(start, r.frequency, r.interval, k) < today && k < r.count + 10_000) k++;
     const next = occurrence(start, r.frequency, r.interval, k);
-    if (r.endDate && next > toDateStr(r.endDate))
-      return fail("Срок действия правила уже закончился — измените дату окончания");
+    if (r.endDate && next > toDateStr(r.endDate)) return fail("err.ruleEnded");
     await db.recurringRule.update({
       where: { id },
       data: { active: true, count: k, nextDate: fromDateStr(next) },
@@ -112,7 +111,7 @@ export async function setRecurringActive(
 export async function deleteRecurring(id: string): Promise<ActionResult<undefined>> {
   const user = await requireUser();
   const { count } = await db.recurringRule.deleteMany({ where: { id, userId: user.id } });
-  if (!count) return fail("Правило не найдено");
+  if (!count) return fail("err.ruleNotFound");
   refresh();
   return ok(undefined);
 }
@@ -137,7 +136,7 @@ export async function saveGoal(
       where: { id, userId: user.id },
       include: { contributions: { select: { amount: true } } },
     });
-    if (!goal) return fail("Цель не найдена");
+    if (!goal) return fail("err.goalNotFound");
     const saved = goal.contributions.reduce((s, c) => s + c.amount, 0n);
     await db.goal.update({
       where: { id },
@@ -160,7 +159,7 @@ export async function saveGoal(
 export async function deleteGoal(id: string): Promise<ActionResult<undefined>> {
   const user = await requireUser();
   const { count } = await db.goal.deleteMany({ where: { id, userId: user.id } });
-  if (!count) return fail("Цель не найдена");
+  if (!count) return fail("err.goalNotFound");
   refresh();
   return ok(undefined);
 }
@@ -179,11 +178,10 @@ export async function addContribution(
       where: { id: goalId, userId: user.id },
       include: { contributions: { select: { amount: true } } },
     });
-    if (!goal) return fail("Цель не найдена");
+    if (!goal) return fail("err.goalNotFound");
     const before = goal.contributions.reduce((s, c) => s + c.amount, 0n);
     const delta = direction === "IN" ? BigInt(amount) : -BigInt(amount);
-    if (before + delta < 0n)
-      return fail("Нельзя снять больше, чем накоплено", { amount: "Больше, чем накоплено" });
+    if (before + delta < 0n) return fail("err.withdrawTooMuch", { amount: "err.moreThanSaved" });
     await tx.goalContribution.create({
       data: { goalId, userId: user.id, amount: delta, date: fromDateStr(date), note },
     });

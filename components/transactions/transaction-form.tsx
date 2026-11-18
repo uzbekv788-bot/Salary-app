@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
-import Link from "next/link";
+import Link from "@/components/i18n/link";
 import { Repeat, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CategoryIcon } from "@/components/ui/category-icon";
@@ -12,10 +12,11 @@ import { NativeSelect } from "@/components/ui/native-select";
 import { Segmented } from "@/components/ui/segmented";
 import { deleteTransaction, restoreTransaction, saveTransaction } from "@/lib/actions/finance";
 import { enqueue, isNetworkError, newClientId } from "@/lib/offline-queue";
-import { formatMoney, parseAmount } from "@/lib/money";
+import { parseAmount } from "@/lib/money";
 import type { TransactionInput } from "@/lib/validators/finance";
+import { useI18n } from "@/components/i18n/locale-provider";
 import { formatAmountInput, minorToInput } from "@/lib/format-input";
-import { CURRENCIES } from "@/lib/currencies";
+import { currencySymbol } from "@/lib/currencies";
 import type { CategoryDTO, TransactionDTO, WalletDTO } from "@/lib/queries/finance";
 import { cn } from "@/lib/utils";
 
@@ -56,6 +57,7 @@ export function TransactionForm({
   /** Для офлайн-очереди: чьи это записи */
   userId?: string;
 }) {
+  const { t, fmt } = useI18n();
   // Форма рендерится только в браузере (внутри модалки), поэтому localStorage доступен
   const [last] = useState(() => (typeof window === "undefined" ? {} : readLast()));
   const validCat = (id?: string) =>
@@ -80,46 +82,45 @@ export function TransactionForm({
   const visible = categories.filter(
     (c) => c.type === type && (!c.archived || c.id === initial?.categoryId),
   );
-  const symbol = CURRENCIES.find((c) => c.code === currency)?.symbol ?? currency;
+  const symbol = currencySymbol(currency, fmt.locale);
 
   useEffect(() => {
     // Автофокус на сумме только на устройствах с мышью — на телефоне клавиатура перекрыла бы форму
     if (window.matchMedia("(pointer: fine)").matches) amountRef.current?.focus();
   }, []);
 
-  const switchType = (t: TxType) => {
-    setType(t);
-    const remembered = readLast()[t];
+  const switchType = (next: TxType) => {
+    setType(next);
+    const remembered = readLast()[next];
     setCategoryId(
-      categories.some((c) => c.id === remembered && c.type === t && !c.archived) ? remembered! : "",
+      categories.some((c) => c.id === remembered && c.type === next && !c.archived)
+        ? remembered!
+        : "",
     );
   };
 
   /** Без сети: проверяем сами и кладём в очередь на устройстве (tasks.md 17.3). */
   const saveOffline = async (input: TransactionInput & { clientId: string }) => {
-    if (!userId) return setErrors({ form: "Нет сети. Попробуйте ещё раз, когда связь появится." });
+    if (!userId) return setErrors({ form: "tx.offlineNoUser" });
     const minor = parseAmount(amount);
-    if (minor === null || minor <= 0) return setErrors({ amount: "Введите сумму больше нуля" });
+    if (minor === null || minor <= 0) return setErrors({ amount: "v.amountPositive" });
     const cat = categories.find((c) => c.id === categoryId);
     await enqueue({
       clientId: input.clientId,
       userId,
       input,
       repeat: repeat || undefined,
-      label: `${cat?.name ?? "Операция"} · ${formatMoney(type === "INCOME" ? minor : -minor, currency, { signed: true })}`,
+      label: `${cat?.name ?? t("tx.fallback")} · ${fmt.money(type === "INCOME" ? minor : -minor, currency, { signed: true })}`,
     });
     writeLast({ [type]: categoryId, wallet: walletId });
-    toast.success("Сохранено на устройстве", {
-      description: "Нет сети — отправим автоматически, когда связь появится",
-    });
+    toast.success(t("tx.savedOffline"), { description: t("tx.savedOfflineDesc") });
     onDone();
   };
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!categoryId) return setErrors({ categoryId: "Выберите категорию" });
-    if (initial && !navigator.onLine)
-      return setErrors({ form: "Без сети можно только добавлять новые операции" });
+    if (!categoryId) return setErrors({ categoryId: "v.category" });
+    if (initial && !navigator.onLine) return setErrors({ form: "tx.offlineEditOnly" });
     // ID с устройства: если ответ сервера потеряется и запрос уйдёт повторно — дубля не будет
     const input = {
       type,
@@ -144,17 +145,15 @@ export function TransactionForm({
       if (!res.ok) return setErrors(res.fieldErrors ?? { form: res.error });
       writeLast({ [type]: categoryId, wallet: walletId });
       toast.success(
-        initial ? "Операция изменена" : type === "INCOME" ? "Доход добавлен" : "Расход добавлен",
-        repeat && !initial
-          ? { description: "Будет повторяться автоматически — см. «Регулярные»" }
-          : undefined,
+        initial ? t("tx.edited") : type === "INCOME" ? t("tx.incomeAdded") : t("tx.expenseAdded"),
+        repeat && !initial ? { description: t("tx.willRepeat") } : undefined,
       );
       const b = res.data.budget;
       if (b) {
         const pct = Math.round(b.pct * 100);
         if (b.status === "over")
-          toast.error(`Бюджет «${b.name}» превышен: ${pct}% от лимита`, { duration: 6000 });
-        else toast.warning(`Бюджет «${b.name}» почти исчерпан: ${pct}%`, { duration: 6000 });
+          toast.error(t("tx.budgetOver", { name: b.name, pct }), { duration: 6000 });
+        else toast.warning(t("tx.budgetWarn", { name: b.name, pct }), { duration: 6000 });
       }
       onDone();
     });
@@ -163,23 +162,23 @@ export function TransactionForm({
     startTransition(async () => {
       if (!initial) return;
       if (!navigator.onLine) {
-        toast.error("Без сети удалить операцию нельзя");
+        toast.error(t("tx.offlineNoDelete"));
         return;
       }
       const res = await deleteTransaction(initial.id);
       if (!res.ok) {
-        toast.error(res.error);
+        toast.error(t.dyn(res.error));
         return;
       }
       onDone();
-      toast("Операция удалена", {
+      toast(t("tx.deleted"), {
         duration: 5000,
         action: {
-          label: "Отменить",
+          label: t("tx.undo"),
           onClick: async () => {
             const r = await restoreTransaction(initial.id);
-            if (r.ok) toast.success("Операция восстановлена");
-            else toast.error(r.error);
+            if (r.ok) toast.success(t("tx.restored"));
+            else toast.error(t.dyn(r.error));
           },
         },
       });
@@ -188,21 +187,25 @@ export function TransactionForm({
   return (
     <form onSubmit={submit} noValidate className="grid gap-4">
       <Segmented
-        label="Тип операции"
+        label={t("tx.typeLabel")}
         value={type}
         onChange={switchType}
         options={[
-          { value: "EXPENSE", label: "Расход", activeClass: "bg-expense text-expense-foreground" },
+          {
+            value: "EXPENSE",
+            label: t("common.expenseOne"),
+            activeClass: "bg-expense text-expense-foreground",
+          },
           {
             value: "INCOME",
-            label: "Доход",
+            label: t("common.incomeOne"),
             activeClass: "bg-income text-income-foreground",
           },
         ]}
       />
 
       <div className="grid gap-1.5">
-        <Label htmlFor="tx-amount">Сумма</Label>
+        <Label htmlFor="tx-amount">{t("common.amount")}</Label>
         <div className="relative">
           <Input
             ref={amountRef}
@@ -222,14 +225,16 @@ export function TransactionForm({
             {symbol}
           </span>
         </div>
-        {errors.amount && <p className="text-expense text-[13px]">{errors.amount}</p>}
+        {errors.amount && <p className="text-expense text-[13px]">{t.dyn(errors.amount)}</p>}
       </div>
 
       <fieldset className="grid gap-1.5">
-        <legend className="text-muted-foreground mb-1.5 text-[13px] font-medium">Категория</legend>
+        <legend className="text-muted-foreground mb-1.5 text-[13px] font-medium">
+          {t("common.category")}
+        </legend>
         <div
           role="radiogroup"
-          aria-label="Категория"
+          aria-label={t("common.category")}
           className="grid max-h-52 grid-cols-3 gap-1.5 overflow-y-auto p-0.5 sm:grid-cols-4"
         >
           {visible.map((c) => (
@@ -254,12 +259,14 @@ export function TransactionForm({
             </button>
           ))}
         </div>
-        {errors.categoryId && <p className="text-expense text-[13px]">{errors.categoryId}</p>}
+        {errors.categoryId && (
+          <p className="text-expense text-[13px]">{t.dyn(errors.categoryId)}</p>
+        )}
       </fieldset>
 
       <div className="grid grid-cols-2 gap-3">
         <div className="grid gap-1.5">
-          <Label htmlFor="tx-date">Дата</Label>
+          <Label htmlFor="tx-date">{t("common.date")}</Label>
           <Input
             id="tx-date"
             type="date"
@@ -270,7 +277,7 @@ export function TransactionForm({
           />
         </div>
         <div className="grid gap-1.5">
-          <Label htmlFor="tx-wallet">Счёт</Label>
+          <Label htmlFor="tx-wallet">{t("common.wallet")}</Label>
           <NativeSelect
             id="tx-wallet"
             value={walletId}
@@ -288,11 +295,11 @@ export function TransactionForm({
       </div>
 
       <div className="grid gap-1.5">
-        <Label htmlFor="tx-note">Комментарий</Label>
+        <Label htmlFor="tx-note">{t("common.note")}</Label>
         <Input
           id="tx-note"
           maxLength={200}
-          placeholder="Например, Пятёрочка"
+          placeholder={t("tx.notePlaceholder")}
           value={note}
           onChange={(e) => setNote(e.target.value)}
         />
@@ -303,37 +310,37 @@ export function TransactionForm({
           <p className="bg-foreground/5 text-muted-foreground flex items-start gap-2 rounded-sm px-3 py-2 text-[13px]">
             <Repeat aria-hidden className="mt-0.5 size-4 shrink-0" />
             <span>
-              Создана регулярным платежом. Изменения коснутся только этой операции —{" "}
+              {t("tx.recurringA")}{" "}
               <Link
                 href="/recurring"
                 className="text-primary font-semibold hover:underline"
                 onClick={onDone}
               >
-                правило
+                {t("tx.recurringRule")}
               </Link>{" "}
-              останется прежним.
+              {t("tx.recurringB")}
             </span>
           </p>
         )
       ) : (
         <div className="grid gap-1.5">
-          <Label htmlFor="tx-repeat">Повторять</Label>
+          <Label htmlFor="tx-repeat">{t("tx.repeat")}</Label>
           <NativeSelect
             id="tx-repeat"
             value={repeat}
             onChange={(e) => setRepeat(e.target.value as typeof repeat)}
           >
-            <option value="">Не повторять</option>
-            <option value="WEEKLY">Каждую неделю</option>
-            <option value="MONTHLY">Каждый месяц</option>
-            <option value="YEARLY">Каждый год</option>
+            <option value="">{t("tx.repeatNone")}</option>
+            <option value="WEEKLY">{t("tx.weekly")}</option>
+            <option value="MONTHLY">{t("tx.monthly")}</option>
+            <option value="YEARLY">{t("tx.yearly")}</option>
           </NativeSelect>
         </div>
       )}
 
       {errors.form && (
         <p role="alert" className="bg-expense/10 text-expense rounded-sm px-3 py-2 text-sm">
-          {errors.form}
+          {t.dyn(errors.form)}
         </p>
       )}
 
@@ -345,14 +352,14 @@ export function TransactionForm({
             size="icon"
             onClick={remove}
             disabled={pending}
-            aria-label="Удалить операцию"
+            aria-label={t("tx.deleteAria")}
             className="text-expense"
           >
             <Trash2 />
           </Button>
         )}
         <Button type="submit" className="flex-1" disabled={pending}>
-          {pending ? "Сохраняем…" : initial ? "Сохранить" : "Добавить"}
+          {pending ? t("common.saving") : initial ? t("common.save") : t("common.add")}
         </Button>
       </div>
     </form>

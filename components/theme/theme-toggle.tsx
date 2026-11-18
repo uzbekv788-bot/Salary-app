@@ -4,18 +4,21 @@ import { useSyncExternalStore } from "react";
 import { useTheme } from "next-themes";
 import { Monitor, Moon, Sun } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/components/i18n/locale-provider";
+import type { TKey } from "@/lib/i18n/core";
 
 const options = [
-  { value: "light", label: "Светлая тема", icon: Sun },
-  { value: "dark", label: "Тёмная тема", icon: Moon },
-  { value: "system", label: "Как в системе", icon: Monitor },
-] as const;
+  { value: "light", label: "theme.light", icon: Sun },
+  { value: "dark", label: "theme.dark", icon: Moon },
+  { value: "system", label: "theme.system", icon: Monitor },
+] as const satisfies readonly { value: string; label: TKey; icon: unknown }[];
 
 const subscribe = () => () => {};
 
 /** Сегментированный переключатель темы: светлая / тёмная / системная. */
 export function ThemeToggle({ className }: { className?: string }) {
   const { theme, setTheme } = useTheme();
+  const { t } = useI18n();
   // Тема известна только в браузере — до гидрации ничего не выделяем.
   const mounted = useSyncExternalStore(
     subscribe,
@@ -26,7 +29,7 @@ export function ThemeToggle({ className }: { className?: string }) {
   return (
     <div
       role="radiogroup"
-      aria-label="Тема оформления"
+      aria-label={t("theme.label")}
       className={cn("glass inline-flex rounded-full p-1", className)}
     >
       {options.map(({ value, label, icon: Icon }) => {
@@ -37,8 +40,8 @@ export function ThemeToggle({ className }: { className?: string }) {
             type="button"
             role="radio"
             aria-checked={active}
-            aria-label={label}
-            title={label}
+            aria-label={t(label)}
+            title={t(label)}
             onClick={() => setTheme(value)}
             className={cn(
               "text-muted-foreground focus-visible:ring-ring inline-flex size-8 items-center justify-center rounded-full transition-colors outline-none focus-visible:ring-2",

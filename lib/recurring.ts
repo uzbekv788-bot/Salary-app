@@ -65,46 +65,98 @@ export function monthlyEquivalent(amount: number, frequency: Frequency, interval
   return Math.round(amount / (MONTHS_PER[frequency] * Math.max(1, interval)));
 }
 
-const WEEKDAYS = [
-  "воскресеньям",
-  "понедельникам",
-  "вторникам",
-  "средам",
-  "четвергам",
-  "пятницам",
-  "субботам",
-];
-const MONTHS_GEN = [
-  "января",
-  "февраля",
-  "марта",
-  "апреля",
-  "мая",
-  "июня",
-  "июля",
-  "августа",
-  "сентября",
-  "октября",
-  "ноября",
-  "декабря",
-];
+const WEEKDAYS = {
+  ru: ["воскресеньям", "понедельникам", "вторникам", "средам", "четвергам", "пятницам", "субботам"],
+  en: ["Sundays", "Mondays", "Tuesdays", "Wednesdays", "Thursdays", "Fridays", "Saturdays"],
+  uz: ["yakshanba", "dushanba", "seshanba", "chorshanba", "payshanba", "juma", "shanba"],
+};
+const MONTHS_GEN = {
+  ru: [
+    "января",
+    "февраля",
+    "марта",
+    "апреля",
+    "мая",
+    "июня",
+    "июля",
+    "августа",
+    "сентября",
+    "октября",
+    "ноября",
+    "декабря",
+  ],
+  en: [
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December",
+  ],
+  uz: [
+    "yanvar",
+    "fevral",
+    "mart",
+    "aprel",
+    "may",
+    "iyun",
+    "iyul",
+    "avgust",
+    "sentyabr",
+    "oktyabr",
+    "noyabr",
+    "dekabr",
+  ],
+};
+const ordinal = (n: number) => {
+  const s = ["th", "st", "nd", "rd"];
+  const v = n % 100;
+  return n + (s[(v - 20) % 10] || s[v] || s[0]);
+};
 
-/** «Каждый месяц, 10-го», «Каждые 2 недели, по пятницам», «Каждый год, 1 марта». */
+/**
+ * «Каждый месяц, 10-го» / «Every month on the 10th» / «Har oy, 10-sanada».
+ * Грамматика у языков разная, поэтому фраза собирается здесь, а не шаблоном словаря.
+ */
 export function describeSchedule(
   startDate: string,
   frequency: Frequency,
   interval: number,
+  lang: "ru" | "en" | "uz" = "ru",
 ): string {
   const d = parseDate(startDate)!;
   const n = Math.max(1, interval);
+  const wd = d.getDay();
+  const day = getDate(d);
+  const month = d.getMonth();
+  const late = day >= 29;
+  if (lang === "en") {
+    if (frequency === "WEEKLY")
+      return `${n === 1 ? "Every week" : `Every ${n} weeks`} on ${WEEKDAYS.en[wd]}`;
+    if (frequency === "MONTHLY")
+      return `${n === 1 ? "Every month" : `Every ${n} months`} on the ${ordinal(day)}${late ? " (or the last day of the month)" : ""}`;
+    return `${n === 1 ? "Every year" : `Every ${n} years`} on ${MONTHS_GEN.en[month]} ${day}`;
+  }
+  if (lang === "uz") {
+    if (frequency === "WEEKLY")
+      return `${n === 1 ? "Har hafta" : `Har ${n} haftada`}, ${WEEKDAYS.uz[wd]} kunlari`;
+    if (frequency === "MONTHLY")
+      return `${n === 1 ? "Har oy" : `Har ${n} oyda`}, ${day}-sanada${late ? " (yoki oyning oxirgi kunida)" : ""}`;
+    return `${n === 1 ? "Har yili" : `Har ${n} yilda`}, ${day}-${MONTHS_GEN.uz[month]}`;
+  }
   if (frequency === "WEEKLY")
-    return `${n === 1 ? "Каждую неделю" : `Каждые ${n} нед.`}, по ${WEEKDAYS[d.getDay()]}`;
+    return `${n === 1 ? "Каждую неделю" : `Каждые ${n} нед.`}, по ${WEEKDAYS.ru[wd]}`;
   if (frequency === "MONTHLY") {
-    const day = getDate(d);
-    const when = day >= 29 ? `${day}-го (или в последний день месяца)` : `${day}-го`;
+    const when = late ? `${day}-го (или в последний день месяца)` : `${day}-го`;
     return `${n === 1 ? "Каждый месяц" : `Каждые ${n} мес.`}, ${when}`;
   }
-  return `${n === 1 ? "Каждый год" : `Каждые ${n} г.`}, ${getDate(d)} ${MONTHS_GEN[d.getMonth()]}`;
+  return `${n === 1 ? "Каждый год" : `Каждые ${n} г.`}, ${day} ${MONTHS_GEN.ru[month]}`;
 }
 
 /**

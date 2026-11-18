@@ -12,6 +12,7 @@ import {
   removeQueued,
   type QueuedTx,
 } from "@/lib/offline-queue";
+import { useI18n } from "@/components/i18n/locale-provider";
 
 /** Есть ли сеть (события online/offline браузера). */
 export function useOnline() {
@@ -36,6 +37,7 @@ export function useOnline() {
 export function OfflineSync({ userId }: { userId: string }) {
   const online = useOnline();
   const router = useRouter();
+  const { t, href } = useI18n();
   const [queue, setQueue] = useState<QueuedTx[]>([]);
   const [syncing, setSyncing] = useState(false);
   const busy = useRef(false);
@@ -58,7 +60,10 @@ export function OfflineSync({ userId }: { userId: string }) {
           await removeQueued(item.clientId);
           if (r.ok) sent++;
           // Сервер отказал по существу (например, категорию удалили) — повтор не поможет
-          else toast.error(`Не удалось сохранить «${item.label}»: ${r.error}`, { duration: 10000 });
+          else
+            toast.error(t("offlineSync.failed", { label: item.label, error: t.dyn(r.error) }), {
+              duration: 10000,
+            });
         } catch (e) {
           if (isNetworkError(e)) break; // сеть снова пропала — попробуем позже
           throw e;
@@ -69,10 +74,10 @@ export function OfflineSync({ userId }: { userId: string }) {
       setSyncing(false);
     }
     if (sent) {
-      toast.success(`Отправлено операций, введённых без сети: ${sent}`);
+      toast.success(t("offlineSync.sent", { n: sent }));
       router.refresh();
     }
-  }, [userId, router]);
+  }, [userId, router, t]);
 
   // Заранее сохраняем главные экраны, чтобы установленное приложение открывалось без сети
   useEffect(() => {
@@ -87,11 +92,11 @@ export function OfflineSync({ userId }: { userId: string }) {
       .then((r) =>
         r.active?.postMessage({
           type: "warm",
-          urls: ["/dashboard", "/transactions", "/budgets", "/goals"],
+          urls: ["/dashboard", "/transactions", "/budgets", "/goals"].map(href),
         }),
       )
       .catch(() => {});
-  }, [userId]);
+  }, [userId, href]);
 
   useEffect(() => {
     reload();
@@ -129,10 +134,13 @@ export function OfflineSync({ userId }: { userId: string }) {
               <CloudOff className="text-warning size-4 shrink-0" aria-hidden />
             )}
             <span className="truncate">
-              {!online ? "Нет сети" : syncing ? "Отправляем" : "Ждут отправки"}
-              {pending > 0 &&
-                ` · ${pending} ${pending === 1 ? "операция" : pending < 5 ? "операции" : "операций"} на устройстве`}
-              {!online && pending === 0 && " · новые операции сохранятся на устройстве"}
+              {!online
+                ? t("offlineSync.noNetwork")
+                : syncing
+                  ? t("offlineSync.sending")
+                  : t("offlineSync.waiting")}
+              {pending > 0 && t.tp("offlineSync.pending", pending)}
+              {!online && pending === 0 && t("offlineSync.willSave")}
             </span>
             {online && pending > 0 && !syncing && (
               <button
@@ -140,7 +148,7 @@ export function OfflineSync({ userId }: { userId: string }) {
                 onClick={sync}
                 className="text-primary font-semibold underline-offset-2 hover:underline"
               >
-                Отправить
+                {t("offlineSync.send")}
               </button>
             )}
           </div>

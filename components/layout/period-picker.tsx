@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
+import Link from "next/link"; // hrefWith() строится от текущего пути — префикс языка уже в нём
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { CalendarRange, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -17,8 +17,9 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { PERIOD_LABELS, type PeriodKind, type ResolvedPeriod } from "@/lib/period";
+import { type PeriodKind, type ResolvedPeriod } from "@/lib/period";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/components/i18n/locale-provider";
 
 const PERIOD_PARAMS = ["period", "date", "from", "to"];
 
@@ -33,6 +34,7 @@ export function PeriodPicker({
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const router = useRouter();
+  const { t } = useI18n();
   const [customOpen, setCustomOpen] = useState(false);
 
   /** Сохраняем остальные фильтры (например, счёт), меняя только параметры периода. */
@@ -53,7 +55,7 @@ export function PeriodPicker({
       {period.prevParams ? (
         <Link
           href={hrefWith(period.prevParams)}
-          aria-label="Предыдущий период"
+          aria-label={t("period.prev")}
           className={cn(arrow, enabled)}
           scroll={false}
         >
@@ -79,13 +81,13 @@ export function PeriodPicker({
           >
             {(["week", "month", "quarter", "year"] as PeriodKind[]).map((k) => (
               <DropdownMenuRadioItem key={k} value={k}>
-                {PERIOD_LABELS[k]}
+                {t(`period.${k}`)}
               </DropdownMenuRadioItem>
             ))}
           </DropdownMenuRadioGroup>
           <DropdownMenuSeparator />
           <DropdownMenuItem onSelect={() => setCustomOpen(true)}>
-            <CalendarRange /> Свой период…
+            <CalendarRange /> {t("period.customDots")}
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
@@ -93,7 +95,7 @@ export function PeriodPicker({
       {period.nextParams ? (
         <Link
           href={hrefWith(period.nextParams)}
-          aria-label="Следующий период"
+          aria-label={t("period.next")}
           className={cn(arrow, enabled)}
           scroll={false}
         >
@@ -107,7 +109,7 @@ export function PeriodPicker({
 
       <Dialog open={customOpen} onOpenChange={setCustomOpen}>
         <DialogContent aria-describedby={undefined}>
-          <DialogTitle>Свой период</DialogTitle>
+          <DialogTitle>{t("period.custom")}</DialogTitle>
           <form
             className="mt-4 grid gap-4"
             onSubmit={(e) => {
@@ -126,15 +128,15 @@ export function PeriodPicker({
           >
             <div className="grid grid-cols-2 gap-3">
               <div className="grid gap-1.5">
-                <Label htmlFor="pp-from">С</Label>
+                <Label htmlFor="pp-from">{t("period.from")}</Label>
                 <Input id="pp-from" name="from" type="date" required defaultValue={period.from} />
               </div>
               <div className="grid gap-1.5">
-                <Label htmlFor="pp-to">По</Label>
+                <Label htmlFor="pp-to">{t("period.to")}</Label>
                 <Input id="pp-to" name="to" type="date" required defaultValue={period.to} />
               </div>
             </div>
-            <Button type="submit">Показать</Button>
+            <Button type="submit">{t("common.show")}</Button>
           </form>
         </DialogContent>
       </Dialog>

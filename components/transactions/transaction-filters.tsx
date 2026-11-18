@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/ui/native-select";
 import { Segmented } from "@/components/ui/segmented";
 import type { CategoryDTO, WalletDTO } from "@/lib/queries/finance";
+import { useI18n } from "@/components/i18n/locale-provider";
 
 /** Фильтры операций (tasks.md 8.6). Всё состояние — в URL, ссылкой можно поделиться. */
 export function TransactionFilters({
@@ -17,6 +18,7 @@ export function TransactionFilters({
   wallets: WalletDTO[];
 }) {
   const router = useRouter();
+  const { t } = useI18n();
   const pathname = usePathname();
   const sp = useSearchParams();
   const [q, setQ] = useState(sp.get("q") ?? "");
@@ -47,15 +49,19 @@ export function TransactionFilters({
     <div className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-[minmax(260px,1fr)_1fr_200px_180px_auto] lg:items-center">
       <Segmented
         className="col-span-2 lg:col-span-1"
-        label="Тип"
+        label={t("common.type")}
         value={type}
         onChange={(v) => set({ type: v === "ALL" ? null : v, category: null })}
         options={[
-          { value: "ALL", label: "Все" },
-          { value: "EXPENSE", label: "Расходы", activeClass: "bg-expense text-expense-foreground" },
+          { value: "ALL", label: t("common.all") },
+          {
+            value: "EXPENSE",
+            label: t("common.expense"),
+            activeClass: "bg-expense text-expense-foreground",
+          },
           {
             value: "INCOME",
-            label: "Доходы",
+            label: t("common.income"),
             activeClass: "bg-income text-income-foreground",
           },
         ]}
@@ -67,19 +73,19 @@ export function TransactionFilters({
         />
         <Input
           type="search"
-          placeholder="Поиск по комментарию"
-          aria-label="Поиск по комментарию"
+          placeholder={t("tx.search")}
+          aria-label={t("tx.search")}
           value={q}
           onChange={(e) => setQ(e.target.value)}
           className="pl-10"
         />
       </div>
       <NativeSelect
-        aria-label="Категория"
+        aria-label={t("common.category")}
         value={sp.get("category") ?? ""}
         onChange={(e) => set({ category: e.target.value || null })}
       >
-        <option value="">Все категории</option>
+        <option value="">{t("tx.allCategories")}</option>
         {shownCats.map((c) => (
           <option key={c.id} value={c.id}>
             {type === "ALL" ? `${c.type === "INCOME" ? "↗" : "↘"} ` : ""}
@@ -88,11 +94,11 @@ export function TransactionFilters({
         ))}
       </NativeSelect>
       <NativeSelect
-        aria-label="Счёт"
+        aria-label={t("common.wallet")}
         value={sp.get("wallet") ?? ""}
         onChange={(e) => set({ wallet: e.target.value || null })}
       >
-        <option value="">Все счета</option>
+        <option value="">{t("tx.allWallets")}</option>
         {wallets.map((w) => (
           <option key={w.id} value={w.id}>
             {w.name}
@@ -108,7 +114,7 @@ export function TransactionFilters({
           }}
           className="text-muted-foreground hover:bg-foreground/6 focus-visible:ring-ring inline-flex h-11 items-center justify-center gap-1.5 rounded-full px-4 text-sm font-semibold outline-none focus-visible:ring-2"
         >
-          <X className="size-4" /> Сбросить
+          <X className="size-4" /> {t("tx.reset")}
         </button>
       )}
     </div>

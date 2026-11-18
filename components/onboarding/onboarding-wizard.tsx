@@ -7,29 +7,36 @@ import { CategoryIcon } from "@/components/ui/category-icon";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { completeOnboarding } from "@/lib/actions/onboarding";
-import { CURRENCIES } from "@/lib/currencies";
+import { CURRENCIES, currencySymbol } from "@/lib/currencies";
 import { DEFAULT_CATEGORIES } from "@/lib/design/category-palette";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/components/i18n/locale-provider";
+import type { TKey } from "@/lib/i18n/core";
 
-const STEPS = ["Валюта", "Категории", "Счёт"] as const;
+const STEPS = [
+  "onboarding.stepCurrency",
+  "onboarding.stepCategories",
+  "onboarding.stepWallet",
+] as const;
 const WALLET_TYPES = [
-  { value: "CARD", label: "Карта", icon: CreditCard },
-  { value: "CASH", label: "Наличные", icon: Banknote },
-  { value: "SAVINGS", label: "Сбережения", icon: PiggyBank },
+  { value: "CARD", label: "settings.walletTypes.CARD", icon: CreditCard },
+  { value: "CASH", label: "settings.walletTypes.CASH", icon: Banknote },
+  { value: "SAVINGS", label: "settings.walletTypes.SAVINGS", icon: PiggyBank },
 ] as const;
 
 /** Мастер первого запуска (tasks.md 6.1–6.4). */
 export function OnboardingWizard({ name }: { name: string }) {
+  const { t, locale } = useI18n();
   const [step, setStep] = useState(0);
   const [currency, setCurrency] = useState("RUB");
   const [keys, setKeys] = useState<string[]>(DEFAULT_CATEGORIES.map((c) => c.key));
-  const [walletName, setWalletName] = useState("Карта");
+  const [walletName, setWalletName] = useState(() => t("settings.walletTypes.CARD"));
   const [walletType, setWalletType] = useState<(typeof WALLET_TYPES)[number]["value"]>("CARD");
   const [balance, setBalance] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [pending, startTransition] = useTransition();
 
-  const symbol = CURRENCIES.find((c) => c.code === currency)?.symbol ?? "";
+  const symbol = currencySymbol(currency, locale);
   const hasIncome = DEFAULT_CATEGORIES.some((c) => c.type === "INCOME" && keys.includes(c.key));
   const hasExpense = DEFAULT_CATEGORIES.some((c) => c.type === "EXPENSE" && keys.includes(c.key));
   const toggle = (key: string) =>
@@ -49,7 +56,7 @@ export function OnboardingWizard({ name }: { name: string }) {
   return (
     <div>
       {/* Индикатор шагов */}
-      <ol className="mb-6 flex items-center gap-2" aria-label="Шаги">
+      <ol className="mb-6 flex items-center gap-2" aria-label={t("onboarding.steps")}>
         {STEPS.map((label, i) => (
           <li
             key={label}
@@ -74,7 +81,7 @@ export function OnboardingWizard({ name }: { name: string }) {
                 i === step ? "text-foreground" : "text-muted-foreground",
               )}
             >
-              {label}
+              {t(label)}
             </span>
             {i < STEPS.length - 1 && (
               <span
@@ -90,11 +97,13 @@ export function OnboardingWizard({ name }: { name: string }) {
 
       {step === 0 && (
         <section>
-          <h1 className="text-[28px] leading-9 font-bold">Привет, {name.split(" ")[0]}! 👋</h1>
-          <p className="text-muted-foreground mt-1 mb-5">В какой валюте вы ведёте учёт?</p>
+          <h1 className="text-[28px] leading-9 font-bold">
+            {t("onboarding.hello", { name: name.split(" ")[0] })}
+          </h1>
+          <p className="text-muted-foreground mt-1 mb-5">{t("onboarding.currencyQ")}</p>
           <div
             role="radiogroup"
-            aria-label="Валюта"
+            aria-label={t("settings.currency")}
             className="grid grid-cols-2 gap-2.5 sm:grid-cols-4"
           >
             {CURRENCIES.map((c) => (
@@ -111,9 +120,11 @@ export function OnboardingWizard({ name }: { name: string }) {
                     : "border-glass-border bg-glass-strong hover:bg-foreground/4",
                 )}
               >
-                <span className="text-xl font-bold">{c.symbol}</span>
+                <span className="text-xl font-bold">{currencySymbol(c.code, locale)}</span>
                 <span className="text-sm font-semibold">{c.code}</span>
-                <span className="text-muted-foreground text-xs">{c.name}</span>
+                <span className="text-muted-foreground text-xs">
+                  {t(`currencies.${c.code}` as TKey)}
+                </span>
               </button>
             ))}
           </div>
@@ -122,14 +133,12 @@ export function OnboardingWizard({ name }: { name: string }) {
 
       {step === 1 && (
         <section>
-          <h1 className="text-[28px] leading-9 font-bold">Категории</h1>
-          <p className="text-muted-foreground mt-1 mb-5">
-            Снимите лишние — потом их всегда можно добавить или изменить.
-          </p>
+          <h1 className="text-[28px] leading-9 font-bold">{t("onboarding.stepCategories")}</h1>
+          <p className="text-muted-foreground mt-1 mb-5">{t("onboarding.catsHint")}</p>
           {(["EXPENSE", "INCOME"] as const).map((type) => (
             <fieldset key={type} className="mb-4">
               <legend className="text-muted-foreground mb-2 text-xs font-semibold tracking-[0.04em] uppercase">
-                {type === "EXPENSE" ? "Расходы" : "Доходы"}
+                {type === "EXPENSE" ? t("common.expense") : t("common.income")}
               </legend>
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                 {DEFAULT_CATEGORIES.filter((c) => c.type === type).map((c) => {
@@ -151,7 +160,9 @@ export function OnboardingWizard({ name }: { name: string }) {
                         className="sr-only"
                       />
                       <CategoryIcon icon={c.icon} color={c.color} size="sm" />
-                      <span className="flex-1 text-sm font-medium">{c.name}</span>
+                      <span className="flex-1 text-sm font-medium">
+                        {t(`defaultCats.${c.key}` as TKey)}
+                      </span>
                       <span
                         className={cn(
                           "inline-flex size-5 items-center justify-center rounded-full border",
@@ -170,7 +181,7 @@ export function OnboardingWizard({ name }: { name: string }) {
           ))}
           {(!hasIncome || !hasExpense) && (
             <p role="alert" className="text-expense text-[13px]">
-              Оставьте хотя бы одну категорию доходов и одну — расходов.
+              {t("v.needBothCategories")}
             </p>
           )}
         </section>
@@ -178,12 +189,14 @@ export function OnboardingWizard({ name }: { name: string }) {
 
       {step === 2 && (
         <section>
-          <h1 className="text-[28px] leading-9 font-bold">Где лежат деньги?</h1>
-          <p className="text-muted-foreground mt-1 mb-5">
-            Создадим первый счёт. Остальные можно добавить в настройках.
-          </p>
+          <h1 className="text-[28px] leading-9 font-bold">{t("onboarding.walletQ")}</h1>
+          <p className="text-muted-foreground mt-1 mb-5">{t("onboarding.walletHint")}</p>
           <div className="grid gap-4">
-            <div role="radiogroup" aria-label="Тип счёта" className="grid grid-cols-3 gap-2">
+            <div
+              role="radiogroup"
+              aria-label={t("onboarding.walletType")}
+              className="grid grid-cols-3 gap-2"
+            >
               {WALLET_TYPES.map(({ value, label, icon: Icon }) => (
                 <button
                   key={value}
@@ -192,8 +205,8 @@ export function OnboardingWizard({ name }: { name: string }) {
                   aria-checked={walletType === value}
                   onClick={() => {
                     setWalletType(value);
-                    if (WALLET_TYPES.some((w) => w.label === walletName) || !walletName)
-                      setWalletName(label);
+                    if (WALLET_TYPES.some((w) => t(w.label) === walletName) || !walletName)
+                      setWalletName(t(label));
                   }}
                   className={cn(
                     "focus-visible:ring-ring flex flex-col items-center gap-1.5 rounded-md border p-3 text-sm font-medium transition-colors outline-none focus-visible:ring-2",
@@ -202,12 +215,12 @@ export function OnboardingWizard({ name }: { name: string }) {
                       : "border-glass-border bg-glass-strong text-muted-foreground hover:bg-foreground/4",
                   )}
                 >
-                  <Icon className="size-6" /> {label}
+                  <Icon className="size-6" /> {t(label)}
                 </button>
               ))}
             </div>
             <div className="grid gap-1.5">
-              <Label htmlFor="wallet-name">Название</Label>
+              <Label htmlFor="wallet-name">{t("common.name")}</Label>
               <Input
                 id="wallet-name"
                 value={walletName}
@@ -215,11 +228,11 @@ export function OnboardingWizard({ name }: { name: string }) {
                 aria-invalid={Boolean(errors["wallet.name"])}
               />
               {errors["wallet.name"] && (
-                <p className="text-expense text-[13px]">{errors["wallet.name"]}</p>
+                <p className="text-expense text-[13px]">{t.dyn(errors["wallet.name"])}</p>
               )}
             </div>
             <div className="grid gap-1.5">
-              <Label htmlFor="wallet-balance">Сколько на нём сейчас</Label>
+              <Label htmlFor="wallet-balance">{t("onboarding.balanceNow")}</Label>
               <div className="relative">
                 <Input
                   id="wallet-balance"
@@ -235,12 +248,12 @@ export function OnboardingWizard({ name }: { name: string }) {
                 </span>
               </div>
               {errors["wallet.initialBalance"] && (
-                <p className="text-expense text-[13px]">{errors["wallet.initialBalance"]}</p>
+                <p className="text-expense text-[13px]">{t.dyn(errors["wallet.initialBalance"])}</p>
               )}
             </div>
             {errors.form && (
               <p role="alert" className="bg-expense/10 text-expense rounded-sm px-3 py-2 text-sm">
-                {errors.form}
+                {t.dyn(errors.form)}
               </p>
             )}
           </div>
@@ -250,7 +263,7 @@ export function OnboardingWizard({ name }: { name: string }) {
       <div className="mt-7 flex items-center justify-between gap-3">
         {step > 0 ? (
           <Button variant="ghost" onClick={() => setStep(step - 1)} disabled={pending}>
-            Назад
+            {t("onboarding.back")}
           </Button>
         ) : (
           <span />
@@ -260,11 +273,11 @@ export function OnboardingWizard({ name }: { name: string }) {
             onClick={() => setStep(step + 1)}
             disabled={step === 1 && (!hasIncome || !hasExpense)}
           >
-            Далее
+            {t("onboarding.next")}
           </Button>
         ) : (
           <Button onClick={submit} disabled={pending}>
-            <Wallet /> {pending ? "Сохраняем…" : "Начать"}
+            <Wallet /> {pending ? t("common.saving") : t("onboarding.start")}
           </Button>
         )}
       </div>

@@ -5,6 +5,7 @@ import { ArrowDownRight, ArrowUpRight, Minus } from "lucide-react";
 import { Card, Overline } from "@/components/ui/card";
 import { Sparkline } from "@/components/charts/lazy";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/components/i18n/locale-provider";
 
 /** Плавный count-up числа (design.md §9): 500 мс, выключается при reduced-motion. */
 function useCountUp(target: number, duration = 500) {
@@ -43,8 +44,8 @@ export type KpiProps = {
   index?: number;
 };
 
-const fmtMoney = (v: number, currency: string) =>
-  new Intl.NumberFormat("ru-RU", { style: "currency", currency, maximumFractionDigits: 0 })
+const fmtMoney = (v: number, currency: string, intl: string) =>
+  new Intl.NumberFormat(intl, { style: "currency", currency, maximumFractionDigits: 0 })
     .format(v / 100)
     .replace("-", "−");
 
@@ -60,15 +61,22 @@ export function KpiCard({
   index = 0,
 }: KpiProps) {
   const animated = useCountUp(value);
-  const shown =
-    format === "money" ? fmtMoney(animated, currency) : `${Math.round(animated * 100)} %`;
+  const { t, fmt } = useI18n();
+  const pct = (f: number) => fmt.percent(f).replace(/^−/, "");
+  const shown = format === "money" ? fmtMoney(animated, currency, fmt.intl) : pct(animated);
   const Arrow =
     delta === null || Math.abs(delta) < 0.005 ? Minus : delta > 0 ? ArrowUpRight : ArrowDownRight;
   const good = delta === null ? null : invert ? delta < 0 : delta > 0;
+  const sign = delta === null ? "" : delta > 0 ? "+" : delta < 0 ? "−" : "";
   const deltaText =
     delta === null
-      ? "нет данных для сравнения"
-      : `${delta > 0 ? "+" : delta < 0 ? "−" : ""}${format === "percent" ? `${Math.abs(Math.round(delta * 100))} п.п.` : `${Math.abs(Math.round(delta * 100))} %`} к прошлому периоду`;
+      ? t("kpi.noData")
+      : t("kpi.vsPrev", {
+          delta:
+            format === "percent"
+              ? `${sign}${Math.abs(Math.round(delta * 100))} ${t("kpi.pp")}`
+              : `${sign}${pct(Math.abs(Math.round(delta * 100)) / 100)}`,
+        });
 
   return (
     <Card
@@ -78,7 +86,7 @@ export function KpiCard({
       <Overline>{label}</Overline>
       <p
         className="num mt-2 truncate text-[28px] leading-9 font-bold sm:text-[32px] sm:leading-10 2xl:text-[40px] 2xl:leading-[48px]"
-        aria-label={`${label}: ${format === "money" ? fmtMoney(value, currency) : `${Math.round(value * 100)} %`}`}
+        aria-label={`${label}: ${format === "money" ? fmtMoney(value, currency, fmt.intl) : pct(value)}`}
       >
         {shown}
       </p>
