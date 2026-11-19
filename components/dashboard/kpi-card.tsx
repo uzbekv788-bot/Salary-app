@@ -44,11 +44,6 @@ export type KpiProps = {
   index?: number;
 };
 
-const fmtMoney = (v: number, currency: string, intl: string) =>
-  new Intl.NumberFormat(intl, { style: "currency", currency, maximumFractionDigits: 0 })
-    .format(v / 100)
-    .replace("-", "−");
-
 export function KpiCard({
   label,
   value,
@@ -63,7 +58,8 @@ export function KpiCard({
   const animated = useCountUp(value);
   const { t, fmt } = useI18n();
   const pct = (f: number) => fmt.percent(f).replace(/^−/, "");
-  const shown = format === "money" ? fmtMoney(animated, currency, fmt.intl) : pct(animated);
+  const money = (v: number) => fmt.money(Math.round(v / 100) * 100, currency, { cents: false });
+  const shown = format === "money" ? money(animated) : pct(animated);
   const Arrow =
     delta === null || Math.abs(delta) < 0.005 ? Minus : delta > 0 ? ArrowUpRight : ArrowDownRight;
   const good = delta === null ? null : invert ? delta < 0 : delta > 0;
@@ -86,7 +82,7 @@ export function KpiCard({
       <Overline>{label}</Overline>
       <p
         className="num mt-2 truncate text-[28px] leading-9 font-bold sm:text-[32px] sm:leading-10 2xl:text-[40px] 2xl:leading-[48px]"
-        aria-label={`${label}: ${format === "money" ? fmtMoney(value, currency, fmt.intl) : pct(value)}`}
+        aria-label={`${label}: ${format === "money" ? money(value) : pct(value)}`}
       >
         {shown}
       </p>

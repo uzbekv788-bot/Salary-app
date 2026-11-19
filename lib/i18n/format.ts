@@ -6,6 +6,18 @@ import { parseDate } from "@/lib/period";
 
 export const DATE_FNS_LOCALE = { ru, en: enUS, uz } as const;
 
+/** Сокращения для осей графиков по-узбекски: 120 ming, 1,3 mln, 2 mlrd. */
+function compactUz(minor: number | bigint): string {
+  const v = Number(minor) / 100;
+  const abs = Math.abs(v);
+  const n = (x: number) => new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 1 }).format(x);
+  const sign = v < 0 ? "\u2212" : "";
+  if (abs >= 1e9) return `${sign}${n(abs / 1e9)} mlrd`;
+  if (abs >= 1e6) return `${sign}${n(abs / 1e6)} mln`;
+  if (abs >= 1e3) return `${sign}${n(abs / 1e3)} ming`;
+  return sign + n(abs);
+}
+
 /** Форматирование чисел, денег и дат по языку интерфейса (tasks.md 18.1). */
 export function createFormat(locale: Locale) {
   const intl = INTL_LOCALE[locale];
@@ -19,8 +31,17 @@ export function createFormat(locale: Locale) {
       minor: number | bigint,
       currency = "RUB",
       opts: { signed?: boolean; cents?: boolean } = {},
-    ) => formatMoney(minor, currency, { ...opts, intl }),
-    compact: (minor: number | bigint) => formatCompact(minor, intl),
+    ) => {
+      const out = formatMoney(minor, currency, {
+        ...opts,
+        intl,
+        display: locale === "en" ? "narrowSymbol" : "symbol",
+      });
+      // Узбекский форматируется по ru-RU (см. INTL_LOCALE): сум — латиницей
+      return locale === "uz" ? out.replace(/\bUZS\b|сум|сўм/g, "soʻm") : out;
+    },
+    compact: (minor: number | bigint) =>
+      locale === "uz" ? compactUz(minor) : formatCompact(minor, intl),
     percent: (fraction: number, opts: { signed?: boolean } = {}) =>
       formatPercent(fraction, { ...opts, intl }),
     number: (n: number) => new Intl.NumberFormat(intl).format(n),

@@ -58,6 +58,8 @@ export const shell = defineMessages({
       goals: "Цели",
       settings: "Настройки",
       addTransaction: "Добавить операцию",
+      tabDashboard: "Дашборд",
+      tabTransactions: "Операции",
       signOut: "Выйти",
       signOutPending: {
         one: "{n} операция ещё не отправлена — она сохранена только на этом устройстве. Выйти и удалить её?",
@@ -206,6 +208,8 @@ export const shell = defineMessages({
       goals: "Goals",
       settings: "Settings",
       addTransaction: "Add transaction",
+      tabDashboard: "Home",
+      tabTransactions: "History",
       signOut: "Sign out",
       signOutPending: {
         one: "{n} transaction hasn't been sent yet — it's stored only on this device. Sign out and delete it?",
@@ -347,6 +351,8 @@ export const shell = defineMessages({
       goals: "Maqsadlar",
       settings: "Sozlamalar",
       addTransaction: "Operatsiya qoʻshish",
+      tabDashboard: "Asosiy",
+      tabTransactions: "Amallar",
       signOut: "Chiqish",
       signOutPending: {
         one: "{n} ta operatsiya hali yuborilmagan — u faqat shu qurilmada saqlangan. Chiqib, uni oʻchirasizmi?",

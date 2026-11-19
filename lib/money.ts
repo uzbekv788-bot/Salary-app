@@ -37,8 +37,10 @@ export function fromDb(minor: bigint | null | undefined): number {
 }
 
 type FormatOptions = {
-  /** Тег Intl: "ru-RU" (по умолчанию), "en-US", "uz-Latn-UZ" */
+  /** Тег Intl: "ru-RU" (по умолчанию), "en-US" */
   intl?: string;
+  /** "narrowSymbol" — ₽ вместо RUB (английский интерфейс) */
+  display?: "symbol" | "narrowSymbol";
   /** Показывать «+» у положительных сумм (доходы в списках). */
   signed?: boolean;
   /** Всегда показывать копейки. По умолчанию — только если они есть. */
@@ -51,7 +53,7 @@ const MINUS = "−"; // настоящий минус, design.md §3
 export function formatMoney(
   minor: number | bigint,
   currency = "RUB",
-  { signed = false, cents, intl = "ru-RU" }: FormatOptions = {},
+  { signed = false, cents, intl = "ru-RU", display = "symbol" }: FormatOptions = {},
 ): string {
   const value = Number(minor);
   const hasCents = value % MINOR_PER_MAJOR !== 0;
@@ -59,6 +61,7 @@ export function formatMoney(
   const formatted = new Intl.NumberFormat(intl, {
     style: "currency",
     currency,
+    currencyDisplay: display,
     minimumFractionDigits: digits,
     maximumFractionDigits: digits,
   }).format(Math.abs(value) / MINOR_PER_MAJOR);

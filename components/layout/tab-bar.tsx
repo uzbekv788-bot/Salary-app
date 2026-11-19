@@ -11,8 +11,8 @@ import { cn } from "@/lib/utils";
 import { useI18n } from "@/components/i18n/locale-provider";
 
 const MAIN = [
-  { href: "/dashboard", label: "nav.dashboard", icon: LayoutDashboard },
-  { href: "/transactions", label: "nav.transactions", icon: ArrowLeftRight },
+  { href: "/dashboard", label: "nav.tabDashboard", icon: LayoutDashboard },
+  { href: "/transactions", label: "nav.tabTransactions", icon: ArrowLeftRight },
   null, // место под кнопку «+»
   { href: "/analytics", label: "nav.analytics", icon: ChartLine },
 ] as const;
@@ -58,7 +58,7 @@ export function TabBar({ footer }: { footer: React.ReactNode }) {
               className={cn(tabClass, active ? "text-primary" : "text-foreground/80")}
             >
               <item.icon className="size-6" />
-              {t(item.label)}
+              <span className="max-w-full truncate px-0.5">{t(item.label)}</span>
             </Link>
           );
         })}

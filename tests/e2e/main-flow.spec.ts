@@ -205,7 +205,7 @@ test.describe("языки", () => {
     await sheet.getByRole("radio", { name: "Groceries" }).click();
     await sheet.getByRole("button", { name: "Add", exact: true }).click();
     await expect(page.getByText("Expense added")).toBeVisible();
-    await expect(page.getByLabel(/^Expenses: RUB\s?1,250/)).toBeVisible();
+    await expect(page.getByLabel(/^Expenses: ₽1,250/)).toBeVisible();
 
     // Переключение языка в настройках сохраняет экран
     await page.goto("/en/settings");

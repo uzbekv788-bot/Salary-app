@@ -9,8 +9,14 @@ export const LOCALE_NAMES: Record<Locale, string> = {
   en: "English",
   uz: "Oʻzbekcha",
 };
-/** Теги для Intl (числа, деньги, даты) */
-export const INTL_LOCALE: Record<Locale, string> = { ru: "ru-RU", en: "en-US", uz: "uz-Latn-UZ" };
+/**
+ * Теги для Intl (числа и деньги). Для узбекского — "ru-RU": в части браузеров (например,
+ * Chromium без полного ICU) данных uz нет, и формат откатывается к английскому, а на сервере
+ * (Node.js с full-icu) — нет. Разный текст на сервере и в браузере ломает гидратацию.
+ * Числовые правила совпадают (пробел между тысячами, запятая в дробях); слова и символ сума
+ * подставляет lib/i18n/format.ts. Даты всегда форматирует date-fns, а не Intl.
+ */
+export const INTL_LOCALE: Record<Locale, string> = { ru: "ru-RU", en: "en-US", uz: "ru-RU" };
 
 export const isLocale = (v: unknown): v is Locale =>
   typeof v === "string" && (LOCALES as readonly string[]).includes(v);
