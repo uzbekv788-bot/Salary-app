@@ -13,6 +13,8 @@ const nextConfig: NextConfig = {
   cacheComponents: true,
   partialPrefetching: true,
   poweredByHeader: false,
+  // GitHub Codespaces открывает dev-сервер по адресу *.app.github.dev (только для pnpm dev)
+  allowedDevOrigins: ["*.app.github.dev"],
   turbopack: {
     rules: {
       "*.css": {

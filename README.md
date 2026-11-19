@@ -6,6 +6,16 @@ Next.js 16 · React 19 · Tailwind CSS 4 · Radix UI · Recharts · Prisma 7 · 
 Документация проекта — в [`docs/`](docs): [PRD](docs/PRD.md), [SPEC](docs/SPEC.md), [дизайн](docs/design.md),
 [задачи](docs/tasks.md) и [задачи простыми словами](docs/taskGuide.md).
 
+## Открыть в браузере без установки (GitHub Codespaces)
+
+1. На странице репозитория нажмите зелёную кнопку **Code** → вкладка **Codespaces** → **Create codespace on main**.
+2. Подождите 3–5 минут: всё установится само (база данных, зависимости, демо-данные), затем приложение запустится.
+3. Откроется вкладка с приложением (или нажмите **Open in Browser** во всплывающем окне про порт 3000).
+4. Войдите как **demo@salary.app / demo12345**.
+
+У бесплатного аккаунта GitHub есть бесплатные часы Codespaces в месяц. Когда закончите — остановите codespace
+(github.com/codespaces → … → Stop), чтобы не тратить часы.
+
 ## Быстрый старт (локально)
 
 Нужны **Node.js ≥ 20.9**, **pnpm 10** (`npm install -g pnpm`) и **Docker Desktop** — он поднимет PostgreSQL 16.

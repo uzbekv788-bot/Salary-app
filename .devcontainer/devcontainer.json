@@ -1,0 +1,23 @@
+{
+  // GitHub Codespaces: Code → Codespaces → Create codespace on main.
+  // Всё ставится само, приложение запускается и открывается во вкладке браузера.
+  "name": "Salary",
+  "image": "mcr.microsoft.com/devcontainers/javascript-node:22",
+  "postCreateCommand": "bash scripts/dev-setup.sh",
+  "postStartCommand": "sudo service postgresql start",
+  "postAttachCommand": "pnpm dev",
+  "forwardPorts": [3000],
+  "portsAttributes": {
+    "3000": { "label": "Salary", "onAutoForward": "openBrowser" }
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode",
+        "bradlc.vscode-tailwindcss",
+        "Prisma.prisma"
+      ]
+    }
+  }
+}
